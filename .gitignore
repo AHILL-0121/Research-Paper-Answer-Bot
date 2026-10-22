@@ -1,0 +1,41 @@
+*.md
+!README.md
+
+/plan
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Generated data (rebuilt by backend/scripts/ingest.py)
+backend/artifacts/*
+!backend/artifacts/experiments.csv
+!backend/artifacts/.gitkeep
+
+# Source PDFs (re-download from the arXiv URLs in manifest.json)
+backend/data/pdfs/*.pdf
+paper/
+
+# Node / Next.js
+frontend/web/node_modules/
+frontend/web/.next/
+frontend/web/out/
+frontend/web/.env*.local
+
+# Streamlit secrets
+frontend/streamlit/.streamlit/secrets.toml
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
