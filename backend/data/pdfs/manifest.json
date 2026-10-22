@@ -1,0 +1,123 @@
+[
+  {
+    "paper_id": "attention",
+    "paper_title": "Attention Is All You Need",
+    "year": 2017,
+    "arxiv_id": "1706.03762",
+    "url": "https://arxiv.org/abs/1706.03762",
+    "source_file": "Attention Is All You Need - arXiv 1706.03762.pdf",
+    "num_pages": 15,
+    "loader_used": "pypdf",
+    "file_hash": "bdfaa68d8984f0dc02beaca527b76f207d99b666d31d1da728ee0728182df697"
+  },
+  {
+    "paper_id": "bert",
+    "paper_title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+    "year": 2018,
+    "arxiv_id": "1810.04805",
+    "url": "https://arxiv.org/abs/1810.04805",
+    "source_file": "BERT - arXiv 1810.04805.pdf",
+    "num_pages": 16,
+    "loader_used": "pypdf",
+    "file_hash": "5692a5514787a8c6727b4ff3b726a3385798bc68e12138d1d4af83947e2acf6e"
+  },
+  {
+    "paper_id": "cot",
+    "paper_title": "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models",
+    "year": 2022,
+    "arxiv_id": "2201.11903",
+    "url": "https://arxiv.org/abs/2201.11903",
+    "source_file": "Chain-of-Thought Prompting - arXiv 2201.11903.pdf",
+    "num_pages": 43,
+    "loader_used": "pypdf",
+    "file_hash": "7d9f878c23b460e4566aa4ec9201b1abfb3b8faefb2b1356e411cb90fef72a12"
+  },
+  {
+    "paper_id": "dpr",
+    "paper_title": "Dense Passage Retrieval for Open-Domain Question Answering",
+    "year": 2020,
+    "arxiv_id": "2004.04906",
+    "url": "https://arxiv.org/abs/2004.04906",
+    "source_file": "Dense Passage Retrieval - arXiv 2004.04906.pdf",
+    "num_pages": 13,
+    "loader_used": "pypdf",
+    "file_hash": "3e67fc1a9977715acf722d85f0b7d124b03715e975f6310a4d6c12094190912f"
+  },
+  {
+    "paper_id": "gpt3",
+    "paper_title": "Language Models are Few-Shot Learners",
+    "year": 2020,
+    "arxiv_id": "2005.14165",
+    "url": "https://arxiv.org/abs/2005.14165",
+    "source_file": "GPT-3 Language Models are Few-Shot Learners - arXiv 2005.14165.pdf",
+    "num_pages": 75,
+    "loader_used": "pypdf",
+    "file_hash": "97fd272f1fdfc18677462d0292f5fbf26ca86b4d1b485c2dba03269b643a0e83"
+  },
+  {
+    "paper_id": "instructgpt",
+    "paper_title": "Training language models to follow instructions with human feedback",
+    "year": 2022,
+    "arxiv_id": "2203.02155",
+    "url": "https://arxiv.org/abs/2203.02155",
+    "source_file": "InstructGPT - arXiv 2203.02155.pdf",
+    "num_pages": 68,
+    "loader_used": "pypdf",
+    "file_hash": "c1984bb50a5b90fddb895fdc3a0f72e5bc977148c9f63ef6040cbe7a3e1f0d98"
+  },
+  {
+    "paper_id": "llama2",
+    "paper_title": "Llama 2: Open Foundation and Fine-Tuned Chat Models",
+    "year": 2023,
+    "arxiv_id": "2307.09288",
+    "url": "https://arxiv.org/abs/2307.09288",
+    "source_file": "Llama 2 - arXiv 2307.09288.pdf",
+    "num_pages": 77,
+    "loader_used": "pypdf",
+    "file_hash": "1df284ce95f783002074bfe8f21d47c646b396ceb1736ea3ec0ea212fc070d91"
+  },
+  {
+    "paper_id": "lora",
+    "paper_title": "LoRA: Low-Rank Adaptation of Large Language Models",
+    "year": 2021,
+    "arxiv_id": "2106.09685",
+    "url": "https://arxiv.org/abs/2106.09685",
+    "source_file": "LoRA - arXiv 2106.09685.pdf",
+    "num_pages": 26,
+    "loader_used": "pypdf",
+    "file_hash": "e9a0d3128767db616085dc0f4e6e455e672e89af823e8ed1282793682787395a"
+  },
+  {
+    "paper_id": "qlora",
+    "paper_title": "QLoRA: Efficient Finetuning of Quantized LLMs",
+    "year": 2023,
+    "arxiv_id": "2305.14314",
+    "url": "https://arxiv.org/abs/2305.14314",
+    "source_file": "QLoRA - arXiv 2305.14314.pdf",
+    "num_pages": 26,
+    "loader_used": "pypdf",
+    "file_hash": "33a4e757c19d6ea8d3cca8958fce8fe405e290272e135c99ee66065c775d5bd1"
+  },
+  {
+    "paper_id": "react",
+    "paper_title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+    "year": 2022,
+    "arxiv_id": "2210.03629",
+    "url": "https://arxiv.org/abs/2210.03629",
+    "source_file": "ReAct - arXiv 2210.03629.pdf",
+    "num_pages": 33,
+    "loader_used": "pypdf",
+    "file_hash": "f285b0971ae4a790e402fb93966bed3adde2cf0a04977d08b2b40d6ab0cace69"
+  },
+  {
+    "paper_id": "rag",
+    "paper_title": "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks",
+    "year": 2020,
+    "arxiv_id": "2005.11401",
+    "url": "https://arxiv.org/abs/2005.11401",
+    "source_file": "Retrieval-Augmented Generation - arXiv 2005.11401.pdf",
+    "num_pages": 19,
+    "loader_used": "pypdf",
+    "file_hash": "23e3249e9a1e75418d82efecab0ea8c4d033b89c93742f63208d47ce01f21233"
+  }
+]

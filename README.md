@@ -50,3 +50,17 @@ ollama pull llama3.1
 
 `check_env.py` confirms the imports, the GPU, the Ollama model (including the 8k context
 window) and the Gemini key.
+
+## Building the knowledge base
+
+Put the paper PDFs in `backend/data/pdfs/`. Each file name must contain its arXiv id
+(e.g. `LoRA - arXiv 2106.09685.pdf`) and the id must be listed in `backend/data/papers.json`.
+
+```powershell
+cd backend
+.venv\Scripts\python scripts\ingest.py
+```
+
+This loads every page, cleans the text, writes `data/pdfs/manifest.json` and
+`artifacts/pages.parquet`, and prints a quality report. Then open
+`notebooks/capstone.ipynb` and run all cells.

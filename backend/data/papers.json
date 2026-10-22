@@ -1,0 +1,13 @@
+[
+  {"arxiv_id": "1706.03762", "paper_id": "attention", "paper_title": "Attention Is All You Need", "year": 2017},
+  {"arxiv_id": "1810.04805", "paper_id": "bert", "paper_title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding", "year": 2018},
+  {"arxiv_id": "2004.04906", "paper_id": "dpr", "paper_title": "Dense Passage Retrieval for Open-Domain Question Answering", "year": 2020},
+  {"arxiv_id": "2005.11401", "paper_id": "rag", "paper_title": "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks", "year": 2020},
+  {"arxiv_id": "2005.14165", "paper_id": "gpt3", "paper_title": "Language Models are Few-Shot Learners", "year": 2020},
+  {"arxiv_id": "2106.09685", "paper_id": "lora", "paper_title": "LoRA: Low-Rank Adaptation of Large Language Models", "year": 2021},
+  {"arxiv_id": "2201.11903", "paper_id": "cot", "paper_title": "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models", "year": 2022},
+  {"arxiv_id": "2203.02155", "paper_id": "instructgpt", "paper_title": "Training language models to follow instructions with human feedback", "year": 2022},
+  {"arxiv_id": "2210.03629", "paper_id": "react", "paper_title": "ReAct: Synergizing Reasoning and Acting in Language Models", "year": 2022},
+  {"arxiv_id": "2305.14314", "paper_id": "qlora", "paper_title": "QLoRA: Efficient Finetuning of Quantized LLMs", "year": 2023},
+  {"arxiv_id": "2307.09288", "paper_id": "llama2", "paper_title": "Llama 2: Open Foundation and Fine-Tuned Chat Models", "year": 2023}
+]

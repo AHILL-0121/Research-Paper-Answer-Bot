@@ -25,10 +25,13 @@ class Paths:
     """Filesystem locations, all relative to the backend folder."""
 
     data_dir: Path = BACKEND_DIR / "data"
+    catalog: Path = BACKEND_DIR / "data" / "papers.json"  # hand-written titles keyed by arXiv id
     pdf_dir: Path = BACKEND_DIR / "data" / "pdfs"
     manifest: Path = BACKEND_DIR / "data" / "pdfs" / "manifest.json"
     eval_questions: Path = BACKEND_DIR / "data" / "eval" / "eval_questions.json"
     artifacts_dir: Path = BACKEND_DIR / "artifacts"
+    pages: Path = BACKEND_DIR / "artifacts" / "pages.parquet"  # raw and cleaned text per page
+    loader_comparison: Path = BACKEND_DIR / "artifacts" / "loader_comparison.csv"
     chroma_dir: Path = BACKEND_DIR / "artifacts" / "chroma"
     chunks: Path = BACKEND_DIR / "artifacts" / "chunks.parquet"
     bm25: Path = BACKEND_DIR / "artifacts" / "bm25.joblib"
@@ -42,6 +45,11 @@ class Config:
 
     seed: int = 42
     paths: Paths = field(default_factory=Paths)
+
+    # Loading and cleaning
+    pdf_loader: str = "pypdf"  # pypdf | pdfplumber, chosen by the loader comparison
+    empty_page_chars: int = 20  # a page with fewer characters counts as empty
+    repeated_line_share: float = 0.5  # header/footer = same edge line on at least this share of pages
 
     # Chunking
     chunking_strategy: str = "recursive"  # recursive | fixed | semantic
