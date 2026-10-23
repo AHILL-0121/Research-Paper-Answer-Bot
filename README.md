@@ -35,9 +35,47 @@ frontend/
 slides/          Final presentation
 ```
 
-## Setup (Windows)
+## Setup
 
-Requires Python 3.12, an NVIDIA GPU (optional but recommended) and [Ollama](https://ollama.com).
+Requires Python 3.12 and [Ollama](https://ollama.com). An NVIDIA GPU with at least 6 GB is
+recommended but not required. From the repository root:
+
+```powershell
+setup.bat            # Windows
+./setup.sh           # macOS / Linux
+```
+
+The script detects the hardware, creates `backend/.venv`, installs the requirements with the
+matching PyTorch build (CUDA or CPU), checks Ollama and pulls the model, asks the runtime
+choices, reuses or builds the index, and finishes with `scripts/check_env.py`. Useful options:
+
+| Command | Effect |
+|---|---|
+| `setup.bat --yes` | Accept every default without questions |
+| `setup.bat --yes --embedding open` | Fully local: bge-m3 embeddings, no API key, nothing sent to Google |
+| `setup.bat --dry-run` | Show what would happen without changing anything |
+| `setup.bat --help` | All options |
+
+Choices are saved as `RPAB_*` variables in `backend/.env.local` (git-ignored); rerun setup to
+change them. Only machine-dependent choices are offered. Experiment results such as the
+chunking stay fixed in `backend/rpab/config.py`.
+
+### Hardware profiles
+
+Timings measured on an i7-12700H laptop with an RTX 4060 (8 GB), with the GPU hidden for the
+CPU column. A 200-token answer from a prompt of 3 passages (about 1,250 tokens):
+
+| | GPU profile | CPU profile |
+|---|---|---|
+| LLM | `llama3.1:8b` | `llama3.2:3b` (reduced quality) |
+| Reranker | on (0.4 s per question) | off (it would add 22 s per question) |
+| First word / full answer | 3.2 s / 7.6 s | 29 s / 42 s |
+| Building the index | 11 s (bge-m3) | about 15 min (bge-m3 or Gemini free tier) |
+
+Without a GPU, Gemini embeddings are the faster option because no local embedding model has to
+run. The submission zip ships a prebuilt index in `backend/artifacts/`, which setup reuses.
+
+### Manual setup
 
 ```powershell
 cd backend
@@ -61,6 +99,14 @@ cd backend
 .venv\Scripts\python scripts\ingest.py
 ```
 
-This loads every page, cleans the text, writes `data/pdfs/manifest.json` and
-`artifacts/pages.parquet`, and prints a quality report. Then open
-`notebooks/capstone.ipynb` and run all cells.
+This runs three stages: `load` (read and clean every page, write `data/pdfs/manifest.json`
+and `artifacts/pages.parquet`, print a quality report), `chunk` (write the canonical
+`artifacts/chunks.parquet`) and `index` (embed the chunks and build one Chroma collection
+per embedding model under `artifacts/chroma/`). Stages can be run on their own, and
+`--models open` indexes with the local model only:
+
+```powershell
+.venv\Scripts\python scripts\ingest.py chunk index --models open
+```
+
+Then open `notebooks/capstone.ipynb` and run all cells.
