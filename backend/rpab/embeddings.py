@@ -85,12 +85,16 @@ class BgeM3Embedder(CachedEmbedder):
     slug = "bge_m3"
     dim = 1024
 
-    def __init__(self, cache_dir: Path | None = None, batch_size: int = 16, max_seq_length: int = 1024):
+    def __init__(self, cache_dir: Path | None = None, batch_size: int = 16, max_seq_length: int = 1024,
+                 device: str = "auto"):
         super().__init__(cache_dir)
         import torch
         from sentence_transformers import SentenceTransformer
 
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        if device == "auto":
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+        elif device == "cuda" and not torch.cuda.is_available():
+            raise RuntimeError("RPAB_DEVICE=cuda, but PyTorch sees no GPU (CPU build installed, or no NVIDIA driver)")
         dtype = torch.float16 if device == "cuda" else torch.float32
         self.model = SentenceTransformer(self.model_name, device=device, model_kwargs={"dtype": dtype})
         # bge-m3 accepts 8,192 tokens; the longest chunk is far shorter, and a cap bounds GPU memory
@@ -182,7 +186,7 @@ def load_embedder(kind: str, config) -> CachedEmbedder:
     """Build the embedder named in ``config.embedding_models`` (``open`` or ``commercial``)."""
     cache_dir = config.paths.embeddings_cache
     if kind == "open":
-        return BgeM3Embedder(cache_dir, batch_size=config.embed_batch_size)
+        return BgeM3Embedder(cache_dir, batch_size=config.embed_batch_size, device=config.device)
     if kind == "commercial":
         return GeminiEmbedder(config.google_api_key, cache_dir)
     raise ValueError(f"Unknown embedder kind: {kind}")

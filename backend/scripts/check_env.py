@@ -47,6 +47,8 @@ def check_gpu() -> bool:
     import torch
 
     if not torch.cuda.is_available():
+        if CONFIG.profile == "cpu":
+            return report("cuda", None, f"CPU profile, torch {torch.__version__}")
         return report("cuda", False, f"torch {torch.__version__} sees no GPU")
     props = torch.cuda.get_device_properties(0)
     return report("cuda", True, f"{props.name}, {props.total_memory / 2**30:.1f} GiB, torch {torch.__version__}")

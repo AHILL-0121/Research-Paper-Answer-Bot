@@ -4,6 +4,17 @@ Every other module reads settings from ``CONFIG`` instead of hard-coding them,
 so an experiment changes one value here and the whole pipeline follows.
 Secrets (API keys) come from ``backend/.env.local`` or ``backend/.env`` and are
 never stored in this file.
+
+Runtime choices that depend on the machine, not on experiment results, can be overridden
+with ``RPAB_*`` environment variables, which ``scripts/setup.py`` writes to ``.env.local``:
+
+    RPAB_EMBEDDING  commercial | open    embedding model used for retrieval
+    RPAB_LLM        an Ollama model tag  generation model
+    RPAB_RERANKER   on | off             cross-encoder reranking (slow without a GPU)
+    RPAB_DEVICE     auto | cuda | cpu    where local models run
+    RPAB_PROFILE    gpu | cpu            hardware profile, informational
+
+Experiment results (chunking, k, thresholds) are deliberately not overridable this way.
 """
 
 import os
@@ -18,6 +29,14 @@ load_dotenv(BACKEND_DIR / ".env.local")
 load_dotenv(BACKEND_DIR / ".env")
 
 REFUSAL_TEXT = "I don't know based on the provided papers."
+
+
+def _env_choice(name: str, default: str, allowed: tuple[str, ...] | None = None) -> str:
+    """Read an ``RPAB_*`` override, failing loudly on a value the pipeline does not support."""
+    value = (os.getenv(name) or default).strip()
+    if allowed and value not in allowed:
+        raise ValueError(f"{name}={value!r} is not one of {', '.join(allowed)} (check backend/.env.local)")
+    return value
 
 
 @dataclass
@@ -70,8 +89,11 @@ class Config:
     })
     embed_batch_size: int = 16
     # Chosen in notebook section 4: Gemini for retrieval, bge-m3 as the offline fallback
-    embedding_choice: str = "commercial"
+    embedding_choice: str = field(default_factory=lambda: _env_choice("RPAB_EMBEDDING", "commercial",
+                                                                       ("commercial", "open")))
     embedding_fallback: str = "open"
+    device: str = field(default_factory=lambda: _env_choice("RPAB_DEVICE", "auto", ("auto", "cuda", "cpu")))
+    profile: str = field(default_factory=lambda: _env_choice("RPAB_PROFILE", "gpu", ("gpu", "cpu")))
 
     # Retrieval
     retrieval_k: int = 20  # candidates fetched before reranking
@@ -80,12 +102,13 @@ class Config:
     mmr_lambda: float = 0.5
     rrf_k: int = 60  # reciprocal rank fusion constant for hybrid search
     reranker_model: str = "BAAI/bge-reranker-v2-m3"
+    use_reranker: bool = field(default_factory=lambda: _env_choice("RPAB_RERANKER", "on", ("on", "off")) == "on")
     confidence_threshold: float = 0.30  # placeholder until calibrated on dev questions
     multi_query_n: int = 3
 
     # Generation (local, via Ollama)
     ollama_base_url: str = field(default_factory=lambda: os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"))
-    llm_model: str = "llama3.1:latest"
+    llm_model: str = field(default_factory=lambda: _env_choice("RPAB_LLM", "llama3.1:latest"))
     llm_temperature: float = 0.0
     llm_num_ctx: int = 8192  # Ollama's default context is smaller and truncates silently
     judge_model: str = "qwen2.5:7b"
