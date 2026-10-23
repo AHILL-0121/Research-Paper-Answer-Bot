@@ -228,13 +228,9 @@ class Setup:
         self.step("3. Runtime choices")
         env = self.read_env()
         key = os.getenv("GOOGLE_API_KEY") or env.get("GOOGLE_API_KEY")
-        default_embedding = "commercial" if key else "open"
-        if not key and not self.args.embedding:
-            self.info("No GOOGLE_API_KEY found, so the default is the local model. The notebook chose Gemini; "
-                      "answer 'commercial' to enter a key.")
-        self.info("Embedding: commercial = Gemini (best retrieval in the notebook; needs internet and a free key, "
-                  "and sends questions to Google); open = bge-m3 (fully local)")
-        embedding = self.args.embedding or self.ask("Embedding model", ["commercial", "open"], default_embedding)
+        self.info("Embedding: open = bge-m3 (the notebook's choice; fully local); commercial = Gemini (ties bge-m3 "
+                  "once results are reranked; needs internet and a free key, and sends questions to Google)")
+        embedding = self.args.embedding or self.ask("Embedding model", ["open", "commercial"], "open")
         updates = {}
         if embedding == "commercial" and not key:
             if self.args.yes:
