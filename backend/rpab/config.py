@@ -34,6 +34,8 @@ class Paths:
     loader_comparison: Path = BACKEND_DIR / "artifacts" / "loader_comparison.csv"
     chroma_dir: Path = BACKEND_DIR / "artifacts" / "chroma"
     chunks: Path = BACKEND_DIR / "artifacts" / "chunks.parquet"
+    chunk_grid_dir: Path = BACKEND_DIR / "artifacts" / "chunk_grid"  # one parquet per chunking experiment
+    embeddings_cache: Path = BACKEND_DIR / "artifacts" / "embeddings_cache"
     bm25: Path = BACKEND_DIR / "artifacts" / "bm25.joblib"
     experiments: Path = BACKEND_DIR / "artifacts" / "experiments.csv"
     chat_db: Path = BACKEND_DIR / "artifacts" / "chat.db"
@@ -52,10 +54,13 @@ class Config:
     repeated_line_share: float = 0.5  # header/footer = same edge line on at least this share of pages
 
     # Chunking
-    chunking_strategy: str = "recursive"  # recursive | fixed | semantic
-    chunk_size: int = 800  # characters (tokens for the fixed strategy)
-    chunk_overlap: int = 120
+    # Chosen in notebook section 3: fixed 512-token chunks, no overlap, reference lists dropped
+    chunking_strategy: str = "fixed"  # recursive | fixed | semantic
+    chunk_size: int = 512  # tokens for the fixed strategy, characters for the others
+    chunk_overlap: int = 0
     min_chunk_chars: int = 100  # shorter chunks are dropped
+    semantic_percentile: int = 95  # breakpoint percentile, used by the semantic strategy only
+    drop_references: bool = True  # drop chunks that read like a bibliography
 
     # Embeddings: one open-source model and one commercial model are compared
     embedding_models: dict = field(default_factory=lambda: {
@@ -64,6 +69,9 @@ class Config:
         "fallback": "nomic-embed-text",  # via Ollama, used if the Gemini free tier fails
     })
     embed_batch_size: int = 16
+    # Chosen in notebook section 4: Gemini for retrieval, bge-m3 as the offline fallback
+    embedding_choice: str = "commercial"
+    embedding_fallback: str = "open"
 
     # Retrieval
     retrieval_k: int = 20  # candidates fetched before reranking
@@ -84,6 +92,14 @@ class Config:
 
     # Conversation memory (stretch goal S1)
     memory_turns: int = 6
+
+    @property
+    def chunk_spec(self):
+        """The configured chunking as a ``ChunkSpec`` (imported lazily to keep config import-light)."""
+        from rpab.chunking import ChunkSpec
+
+        return ChunkSpec(self.chunking_strategy, self.chunk_size, self.chunk_overlap,
+                         self.semantic_percentile, self.drop_references)
 
     @property
     def google_api_key(self) -> str | None:
