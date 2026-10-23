@@ -1,8 +1,12 @@
 """Retrieval metrics against the labelled eval set, and the shared experiment log.
 
-A retrieved chunk is a hit when it comes from one of the question's gold papers and
-one of its gold pages (doc 05, section 8.2). Only answerable questions are scored;
-out-of-scope questions have no gold passage.
+A retrieved chunk is a hit when its page is one of the gold pages *of its own paper*:
+``gold_pages`` maps each gold paper to its pages, e.g. ``{"lora": [4], "qlora": [4]}``, so a
+multi-paper question cannot be hit by the right page number in the wrong paper.
+
+Retrieval metrics score answerable questions only, because out-of-scope questions have
+no gold passage. They are not ignored: their expected behaviour is a refusal, which the
+weak-context threshold (M3) and the answer evaluation (M4) score explicitly.
 """
 
 import json
@@ -21,14 +25,27 @@ EXPERIMENT_COLUMNS = ["run_id", "timestamp", "stage", "chunking", "chunking_stra
 EXPERIMENT_KEY = ["stage", "chunking", "embedding_model", "retrieval_strategy", "k", "split"]
 
 
+def validate_eval_set(questions: list[dict]) -> None:
+    """Fail loudly on an inconsistent eval file rather than silently mis-scoring it."""
+    ids = [q["id"] for q in questions]
+    if len(ids) != len(set(ids)):
+        raise ValueError("eval question ids are not unique")
+    for q in questions:
+        if not isinstance(q["gold_pages"], dict) or sorted(q["gold_pages"]) != sorted(q["gold_papers"]):
+            raise ValueError(f"{q['id']}: gold_pages must map exactly the gold_papers to their pages")
+        if q["answerable"] != bool(q["gold_papers"]) or q["split"] not in ("dev", "held_out"):
+            raise ValueError(f"{q['id']}: answerable questions need gold papers, out-of-scope ones none")
+
+
 def load_eval_set(path: Path, split: str | None = None, answerable: bool | None = None) -> list[dict]:
     questions = json.loads(Path(path).read_text(encoding="utf-8"))
+    validate_eval_set(questions)
     return [q for q in questions
             if (split is None or q["split"] == split) and (answerable is None or q["answerable"] == answerable)]
 
 
 def is_hit(chunk: dict, question: dict) -> bool:
-    return chunk["paper_id"] in question["gold_papers"] and chunk["page"] in question["gold_pages"]
+    return chunk["page"] in question["gold_pages"].get(chunk["paper_id"], [])
 
 
 def evaluate_retrieval(questions: list[dict], search: Callable[[str], list[dict]], run_id: str = "") -> pd.DataFrame:

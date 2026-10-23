@@ -4,8 +4,14 @@
     "question": "Why does the Transformer scale the dot products by 1/sqrt(d_k) in scaled dot-product attention?",
     "type": "conceptual",
     "split": "dev",
-    "gold_papers": ["attention"],
-    "gold_pages": [4],
+    "gold_papers": [
+      "attention"
+    ],
+    "gold_pages": {
+      "attention": [
+        4
+      ]
+    },
     "reference_answer": "For large d_k the dot products grow large in magnitude and push the softmax into regions with extremely small gradients; scaling by 1/sqrt(d_k) counteracts this.",
     "answerable": true
   },
@@ -14,8 +20,14 @@
     "question": "How many attention heads does the Transformer use, and what are d_k and d_v for each head?",
     "type": "numeric",
     "split": "held_out",
-    "gold_papers": ["attention"],
-    "gold_pages": [5],
+    "gold_papers": [
+      "attention"
+    ],
+    "gold_pages": {
+      "attention": [
+        5
+      ]
+    },
     "reference_answer": "h = 8 parallel heads, with d_k = d_v = d_model / h = 64.",
     "answerable": true
   },
@@ -24,8 +36,14 @@
     "question": "In BERT's masked language model, what share of tokens is chosen for prediction and how are the chosen tokens replaced?",
     "type": "method_detail",
     "split": "dev",
-    "gold_papers": ["bert"],
-    "gold_pages": [4],
+    "gold_papers": [
+      "bert"
+    ],
+    "gold_pages": {
+      "bert": [
+        4
+      ]
+    },
     "reference_answer": "15% of WordPiece token positions are chosen at random. A chosen token is replaced by [MASK] 80% of the time, by a random token 10% of the time, and left unchanged 10% of the time.",
     "answerable": true
   },
@@ -34,8 +52,15 @@
     "question": "How does Dense Passage Retrieval use in-batch negatives during training?",
     "type": "method_detail",
     "split": "dev",
-    "gold_papers": ["dpr"],
-    "gold_pages": [3, 4],
+    "gold_papers": [
+      "dpr"
+    ],
+    "gold_pages": {
+      "dpr": [
+        3,
+        4
+      ]
+    },
     "reference_answer": "With B questions in a mini-batch, each question's gold passage serves as a negative for the other questions; the B x B similarity matrix QP^T is computed once, giving B-1 negatives per question cheaply.",
     "answerable": true
   },
@@ -44,8 +69,14 @@
     "question": "What top-20 retrieval accuracy does DPR reach on Natural Questions, compared with BM25?",
     "type": "numeric",
     "split": "held_out",
-    "gold_papers": ["dpr"],
-    "gold_pages": [5],
+    "gold_papers": [
+      "dpr"
+    ],
+    "gold_pages": {
+      "dpr": [
+        5
+      ]
+    },
     "reference_answer": "78.4% for DPR versus 59.1% for BM25 (single-dataset training).",
     "answerable": true
   },
@@ -54,8 +85,15 @@
     "question": "What is the difference between the RAG-Sequence and RAG-Token models?",
     "type": "conceptual",
     "split": "dev",
-    "gold_papers": ["rag"],
-    "gold_pages": [2, 3],
+    "gold_papers": [
+      "rag"
+    ],
+    "gold_pages": {
+      "rag": [
+        2,
+        3
+      ]
+    },
     "reference_answer": "RAG-Sequence uses the same retrieved document to generate the whole output sequence and marginalises per sequence; RAG-Token can draw a different document for each target token and marginalises per token.",
     "answerable": true
   },
@@ -64,8 +102,15 @@
     "question": "Which retriever and which generator does the RAG model combine?",
     "type": "factual",
     "split": "held_out",
-    "gold_papers": ["rag"],
-    "gold_pages": [2, 3],
+    "gold_papers": [
+      "rag"
+    ],
+    "gold_pages": {
+      "rag": [
+        2,
+        3
+      ]
+    },
     "reference_answer": "A Dense Passage Retriever (DPR) over a Wikipedia vector index as non-parametric memory, and a pre-trained BART seq2seq model as the generator.",
     "answerable": true
   },
@@ -74,8 +119,14 @@
     "question": "How many layers, what model dimension and how many attention heads does the 175B GPT-3 model have?",
     "type": "numeric",
     "split": "dev",
-    "gold_papers": ["gpt3"],
-    "gold_pages": [8],
+    "gold_papers": [
+      "gpt3"
+    ],
+    "gold_pages": {
+      "gpt3": [
+        8
+      ]
+    },
     "reference_answer": "96 layers, d_model = 12288, 96 heads of size 128 (Table 2.1).",
     "answerable": true
   },
@@ -84,8 +135,14 @@
     "question": "How are the LoRA matrices A and B initialised, and why?",
     "type": "method_detail",
     "split": "dev",
-    "gold_papers": ["lora"],
-    "gold_pages": [4],
+    "gold_papers": [
+      "lora"
+    ],
+    "gold_pages": {
+      "lora": [
+        4
+      ]
+    },
     "reference_answer": "A uses a random Gaussian initialisation and B is set to zero, so the update BA is zero at the start of training.",
     "answerable": true
   },
@@ -94,8 +151,14 @@
     "question": "Compared with full fine-tuning of GPT-3 175B, how much does LoRA reduce trainable parameters and GPU memory?",
     "type": "numeric",
     "split": "held_out",
-    "gold_papers": ["lora"],
-    "gold_pages": [1],
+    "gold_papers": [
+      "lora"
+    ],
+    "gold_pages": {
+      "lora": [
+        1
+      ]
+    },
     "reference_answer": "Trainable parameters drop by 10,000 times and the GPU memory requirement by 3 times.",
     "answerable": true
   },
@@ -104,8 +167,15 @@
     "question": "What is a chain of thought in chain-of-thought prompting?",
     "type": "conceptual",
     "split": "dev",
-    "gold_papers": ["cot"],
-    "gold_pages": [1, 2],
+    "gold_papers": [
+      "cot"
+    ],
+    "gold_pages": {
+      "cot": [
+        1,
+        2
+      ]
+    },
     "reference_answer": "A series of intermediate natural-language reasoning steps that lead to the final output, given as exemplars in a few-shot prompt of (input, chain of thought, output) triples.",
     "answerable": true
   },
@@ -114,8 +184,14 @@
     "question": "At what model scale does chain-of-thought prompting start to improve performance?",
     "type": "factual",
     "split": "held_out",
-    "gold_papers": ["cot"],
-    "gold_pages": [4],
+    "gold_papers": [
+      "cot"
+    ],
+    "gold_pages": {
+      "cot": [
+        4
+      ]
+    },
     "reference_answer": "It is an emergent ability of scale: it does not help small models and only yields gains with models of about 100B parameters.",
     "answerable": true
   },
@@ -124,8 +200,15 @@
     "question": "What are the three steps used to train InstructGPT?",
     "type": "method_detail",
     "split": "dev",
-    "gold_papers": ["instructgpt"],
-    "gold_pages": [2, 3],
+    "gold_papers": [
+      "instructgpt"
+    ],
+    "gold_pages": {
+      "instructgpt": [
+        2,
+        3
+      ]
+    },
     "reference_answer": "(1) Supervised fine-tuning on labeler demonstrations, (2) training a reward model on labeler rankings of outputs, (3) reinforcement learning with PPO against that reward model.",
     "answerable": true
   },
@@ -134,8 +217,14 @@
     "question": "What actions can a ReAct agent take in its Wikipedia environment for HotpotQA and FEVER?",
     "type": "method_detail",
     "split": "held_out",
-    "gold_papers": ["react"],
-    "gold_pages": [4],
+    "gold_papers": [
+      "react"
+    ],
+    "gold_pages": {
+      "react": [
+        4
+      ]
+    },
     "reference_answer": "search[entity], which returns the first 5 sentences of the entity's page or similar entities; lookup[string], which returns the next sentence containing the string; and finish[answer], which ends the task.",
     "answerable": true
   },
@@ -144,8 +233,15 @@
     "question": "What is the 4-bit NormalFloat (NF4) data type in QLoRA?",
     "type": "conceptual",
     "split": "dev",
-    "gold_papers": ["qlora"],
-    "gold_pages": [4, 5],
+    "gold_papers": [
+      "qlora"
+    ],
+    "gold_pages": {
+      "qlora": [
+        4,
+        5
+      ]
+    },
     "reference_answer": "A quantile-quantization-based data type with an equal expected number of values per bin, information-theoretically optimal for zero-centred normally distributed weights.",
     "answerable": true
   },
@@ -154,8 +250,15 @@
     "question": "What is Double Quantization in QLoRA and how much memory does it save?",
     "type": "numeric",
     "split": "dev",
-    "gold_papers": ["qlora"],
-    "gold_pages": [2, 5],
+    "gold_papers": [
+      "qlora"
+    ],
+    "gold_pages": {
+      "qlora": [
+        2,
+        5
+      ]
+    },
     "reference_answer": "Quantising the quantisation constants themselves; it saves about 0.37 bits per parameter (roughly 3 GB for a 65B model).",
     "answerable": true
   },
@@ -164,8 +267,15 @@
     "question": "What is Ghost Attention (GAtt) in Llama 2 and what problem does it address?",
     "type": "conceptual",
     "split": "held_out",
-    "gold_papers": ["llama2"],
-    "gold_pages": [16, 17],
+    "gold_papers": [
+      "llama2"
+    ],
+    "gold_pages": {
+      "llama2": [
+        16,
+        17
+      ]
+    },
     "reference_answer": "A method inspired by Context Distillation that modifies the fine-tuning data so the model keeps respecting an initial instruction across multiple dialogue turns, which earlier RLHF models tended to forget.",
     "answerable": true
   },
@@ -174,8 +284,15 @@
     "question": "How many tokens were the Llama 2 models pretrained on, and what context length do they use?",
     "type": "numeric",
     "split": "dev",
-    "gold_papers": ["llama2"],
-    "gold_pages": [5, 6],
+    "gold_papers": [
+      "llama2"
+    ],
+    "gold_pages": {
+      "llama2": [
+        5,
+        6
+      ]
+    },
     "reference_answer": "2 trillion tokens, with a 4k (4096-token) context length, double that of Llama 1.",
     "answerable": true
   },
@@ -184,9 +301,19 @@
     "question": "How do LoRA and QLoRA differ in how they keep the frozen pretrained weights?",
     "type": "comparison",
     "split": "dev",
-    "gold_papers": ["lora", "qlora"],
-    "gold_pages": [4],
-    "reference_answer": "LoRA keeps the pretrained weights W0 frozen in their original precision and trains low-rank matrices B and A; QLoRA stores the frozen base model in 4-bit NF4 and dequantises it to BFloat16 for computation, backpropagating into LoRA adapters.",
+    "gold_papers": [
+      "lora",
+      "qlora"
+    ],
+    "gold_pages": {
+      "lora": [
+        4
+      ],
+      "qlora": [
+        4
+      ]
+    },
+    "reference_answer": "LoRA freezes the pretrained weights W0 and trains only the low-rank matrices B and A added alongside them; QLoRA additionally quantizes the frozen base model to 4-bit NF4 (with double quantization), dequantizing to BFloat16 on the fly for computation while gradients flow through it into the LoRA adapters.",
     "answerable": true
   },
   {
@@ -194,20 +321,21 @@
     "question": "How does the RAG model's retriever relate to Dense Passage Retrieval, and how are passages scored?",
     "type": "comparison",
     "split": "held_out",
-    "gold_papers": ["rag", "dpr"],
-    "gold_pages": [2, 3],
+    "gold_papers": [
+      "rag",
+      "dpr"
+    ],
+    "gold_pages": {
+      "rag": [
+        2,
+        3
+      ],
+      "dpr": [
+        3
+      ]
+    },
     "reference_answer": "RAG initialises its retriever with DPR's pre-trained bi-encoder (BERT-base query and document encoders); passages are scored by the inner (dot) product of question and passage embeddings, and top-k retrieval is a maximum inner product search.",
     "answerable": true
-  },
-  {
-    "id": "q021",
-    "question": "What is the capital of France?",
-    "type": "out_of_scope",
-    "split": "dev",
-    "gold_papers": [],
-    "gold_pages": [],
-    "reference_answer": null,
-    "answerable": false
   },
   {
     "id": "q022",
@@ -215,7 +343,7 @@
     "type": "out_of_scope",
     "split": "dev",
     "gold_papers": [],
-    "gold_pages": [],
+    "gold_pages": {},
     "reference_answer": null,
     "answerable": false
   },
@@ -225,17 +353,7 @@
     "type": "out_of_scope",
     "split": "dev",
     "gold_papers": [],
-    "gold_pages": [],
-    "reference_answer": null,
-    "answerable": false
-  },
-  {
-    "id": "q024",
-    "question": "Who won the 2022 FIFA World Cup?",
-    "type": "out_of_scope",
-    "split": "held_out",
-    "gold_papers": [],
-    "gold_pages": [],
+    "gold_pages": {},
     "reference_answer": null,
     "answerable": false
   },
@@ -245,8 +363,96 @@
     "type": "out_of_scope",
     "split": "held_out",
     "gold_papers": [],
-    "gold_pages": [],
+    "gold_pages": {},
     "reference_answer": null,
     "answerable": false
+  },
+  {
+    "id": "q026",
+    "question": "How much did it cost in US dollars to train GPT-3 175B?",
+    "type": "out_of_scope",
+    "split": "dev",
+    "gold_papers": [],
+    "gold_pages": {},
+    "reference_answer": null,
+    "answerable": false
+  },
+  {
+    "id": "q027",
+    "question": "How much electricity or CO2 did pre-training BERT consume or emit?",
+    "type": "out_of_scope",
+    "split": "held_out",
+    "gold_papers": [],
+    "gold_pages": {},
+    "reference_answer": null,
+    "answerable": false
+  },
+  {
+    "id": "q028",
+    "question": "What is BERT's Next Sentence Prediction task and how are its training pairs built?",
+    "type": "method_detail",
+    "split": "held_out",
+    "gold_papers": [
+      "bert"
+    ],
+    "gold_pages": {
+      "bert": [
+        4,
+        13
+      ]
+    },
+    "reference_answer": "A binary task: for each pre-training pair (A, B), 50% of the time B is the actual next sentence (IsNext) and 50% of the time it is a random sentence from the corpus (NotNext); it teaches the model sentence relationships needed for QA and NLI.",
+    "answerable": true
+  },
+  {
+    "id": "q029",
+    "question": "What is the difference between the zero-shot, one-shot and few-shot settings in GPT-3?",
+    "type": "conceptual",
+    "split": "held_out",
+    "gold_papers": [
+      "gpt3"
+    ],
+    "gold_pages": {
+      "gpt3": [
+        6,
+        7
+      ]
+    },
+    "reference_answer": "All three condition the model at inference time without weight updates. Few-shot gives a few demonstrations (typically 10 to 100, as many as fit the context), one-shot gives exactly one, and zero-shot gives only a natural-language description of the task.",
+    "answerable": true
+  },
+  {
+    "id": "q030",
+    "question": "How did human labelers rate the 1.3B InstructGPT model against the 175B GPT-3?",
+    "type": "factual",
+    "split": "held_out",
+    "gold_papers": [
+      "instructgpt"
+    ],
+    "gold_pages": {
+      "instructgpt": [
+        1,
+        2,
+        3
+      ]
+    },
+    "reference_answer": "Outputs from the 1.3B InstructGPT model were preferred to those of the 175B GPT-3, despite it having 100x fewer parameters.",
+    "answerable": true
+  },
+  {
+    "id": "q031",
+    "question": "How much memory does the smallest Guanaco model need, and how does it compare with Alpaca?",
+    "type": "numeric",
+    "split": "held_out",
+    "gold_papers": [
+      "qlora"
+    ],
+    "gold_pages": {
+      "qlora": [
+        2
+      ]
+    },
+    "reference_answer": "The 7B Guanaco model needs just 5 GB of memory and outperforms a 26 GB Alpaca model by more than 20 percentage points on the Vicuna benchmark.",
+    "answerable": true
   }
 ]
