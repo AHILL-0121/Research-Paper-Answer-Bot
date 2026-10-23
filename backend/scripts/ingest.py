@@ -12,6 +12,7 @@ Run from the backend folder, optionally naming the stages to run:
 
     .venv\\Scripts\\python scripts\\ingest.py
     .venv\\Scripts\\python scripts\\ingest.py chunk index
+    .venv\\Scripts\\python scripts\\ingest.py index --models open    (one embedding model only)
 """
 
 import argparse
@@ -88,7 +89,12 @@ STAGES = {"load": stage_load, "chunk": stage_chunk, "index": stage_index}
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Build the knowledge base.")
     parser.add_argument("stages", nargs="*", choices=list(STAGES), default=list(STAGES))
+    parser.add_argument("--models", nargs="+", choices=["open", "commercial"], default=["open", "commercial"],
+                        help="embedding models to index with (index stage only)")
     args = parser.parse_args()
     set_seed(CONFIG.seed)
     for name in args.stages:
-        STAGES[name]()
+        if name == "index":
+            stage_index(tuple(args.models))
+        else:
+            STAGES[name]()
