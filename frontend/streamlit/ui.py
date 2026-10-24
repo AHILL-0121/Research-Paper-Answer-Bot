@@ -28,7 +28,7 @@ def short_title(title: str) -> str:
 
 # ---- theme -------------------------------------------------------------------------------
 
-LIGHT = {"desk": "#ECEEF1", "sheet": "#FFFFFF", "ink": "#1A1D24", "ink-2": "#4A505C", "ink-3": "#737A89",
+LIGHT = {"desk": "#ECEEF1", "sheet": "#FFFFFF", "ink": "#1A1D24", "ink-2": "#4A505C", "ink-3": "#636A79",
          "rule": "#D8DBE1", "rule-2": "#E8EAEE", "pen": "#2F3C9E", "pen-soft": "#E7E9F7", "marker": "#FBE38A",
          "marker-ink": "#362C00", "note-bg": "#F2F3F6", "danger": "#A12A2A", "danger-bg": "#FBEDEC",
          "shadow": "0 1px 0 rgba(26,29,36,.04), 0 10px 30px -14px rgba(26,29,36,.28)"}
