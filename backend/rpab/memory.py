@@ -147,13 +147,22 @@ class QuestionRewriter:
 
     @staticmethod
     def format_history(history: list[tuple[str, str]]) -> str:
+        """The history in two labelled blocks, so a reference such as "it" is read against the latest
+        topic, not the first one in the window: the earlier questions alone (their answers' wording
+        pulled references towards old topics), then the most recent question and answer in full."""
         lines = []
         for role, content in history:
             text = " ".join(CITATION_WITH_SPACE.sub("", content).split())
             if len(text) > HISTORY_CHARS:
                 text = text[:HISTORY_CHARS].rsplit(" ", 1)[0] + " …"
-            lines.append(f"{'User' if role == 'user' else 'Assistant'}: {text}")
-        return "\n".join(lines)
+            lines.append((role, f"{'User' if role == 'user' else 'Assistant'}: {text}"))
+        users = [i for i, (role, _) in enumerate(history) if role == "user"]
+        split = users[-1] if users else 0
+        earlier = [line for role, line in lines[:split] if role == "user"]
+        recent = [line for _, line in lines[split:]]
+        blocks = (["Earlier in the conversation:\n" + "\n".join(earlier)] if earlier else []) + \
+                 ["Most recent exchange:\n" + "\n".join(recent)]
+        return "\n\n".join(blocks)
 
     @staticmethod
     def clean(reply: str, question: str) -> str:

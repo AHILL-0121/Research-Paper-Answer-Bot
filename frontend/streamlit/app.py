@@ -273,7 +273,9 @@ def render_turn(t: int, turn: dict) -> None:
             for k, question in enumerate(suggestions(t)):
                 chips[k].button(question, key=f"chip-{t}-{k}", on_click=ask, args=(question,))
 
-    st.html(ui.web_note(response.web_note, response.used_web_fallback))
+    note = ui.web_note(response.web_note, response.used_web_fallback)
+    if note:  # st.html rejects an empty string, and most answers have no web note
+        st.html(note)
     if response.sources:
         st.html(ui.sources_header(response.refused))
         with st.container(key=f"srcs-{'dim-' if response.refused else ''}{t}"):

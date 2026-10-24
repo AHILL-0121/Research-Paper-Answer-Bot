@@ -59,3 +59,14 @@ def test_history_shows_follow_ups_in_their_standalone_form(tmp_path):
         "What is LoRA?", "How does QLoRA build on LoRA?"]
     # The raw question is what the user typed, and what the chat shows
     assert store.get_session("session-1").messages[2].content == "How does QLoRA build on it?"
+
+
+def test_rewriter_history_keeps_only_the_latest_answer():
+    history = [("user", "Which retriever does RAG use?"), ("assistant", "RAG uses DPR [1]."),
+               ("user", "How does QLoRA build on LoRA?"), ("assistant", "QLoRA quantizes the frozen model [2].")]
+    text = QuestionRewriter.format_history(history)
+    earlier, recent = text.split("Most recent exchange:")
+    # Earlier answers pulled references back to old topics, so only earlier questions are shown
+    assert "Which retriever does RAG use?" in earlier and "DPR" not in earlier
+    assert "How does QLoRA build on LoRA?" in recent and "QLoRA quantizes the frozen model." in recent
+    assert QuestionRewriter.format_history(history[2:]).startswith("Most recent exchange:")
