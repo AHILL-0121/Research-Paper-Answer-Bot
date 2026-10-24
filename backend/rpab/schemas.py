@@ -30,6 +30,8 @@ class Source(BaseModel):
     score: float
     origin: Literal["paper", "web"] = "paper"
     url: Optional[str] = None  # web sources only (S3)
+    chunk_id: Optional[str] = None  # beyond doc 05: lets evaluation check gold pages and the UI key its cards
+    paper_id: Optional[str] = None
 
 
 class AskRequest(BaseModel):

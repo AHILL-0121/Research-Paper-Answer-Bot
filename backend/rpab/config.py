@@ -60,6 +60,8 @@ class Paths:
     multi_query_app_cache: Path = BACKEND_DIR / "artifacts" / "multi_query_app_cache.json"  # same, for app questions
     experiments: Path = BACKEND_DIR / "artifacts" / "experiments.csv"
     chat_db: Path = BACKEND_DIR / "artifacts" / "chat.db"
+    answers_dir: Path = BACKEND_DIR / "artifacts" / "answers"  # generated answers and judge scores per model
+    manual_scores: Path = BACKEND_DIR / "data" / "eval" / "answer_scores_manual.csv"  # hand scores, tracked
 
 
 @dataclass

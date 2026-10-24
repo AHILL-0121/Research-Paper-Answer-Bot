@@ -9,8 +9,10 @@ Guarantees that do not depend on the model behaving:
 - Sources come from the retrieved chunks' metadata, never from the generated text.
 - Citation markers that point at no passage (``[4]`` with three passages) are removed, also
   while streaming, so a wrong marker never reaches the screen.
-- An answer that opens with "I don't know" (loosely matched) is replaced by the exact refusal
-  sentence, and the closest passages are still returned so the user sees what was searched.
+- When the top passage scores below the calibrated threshold, the prompt says so and asks for
+  a refusal unless a passage answers directly (the model still decides, as in doc 03).
+- An answer that opens with "I don't know", or cites nothing and says the context lacks the
+  answer, is replaced by the exact refusal sentence; the closest passages are still returned.
 """
 
 import re
@@ -24,7 +26,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableBranch, RunnableLambda, RunnableParallel, RunnablePassthrough
 
 from rpab.config import CONFIG, REFUSAL_TEXT
-from rpab.prompts import RAG_PROMPT, format_context
+from rpab.prompts import RAG_PROMPT, WEAK_CONTEXT_NOTICE, format_context
 from rpab.retrievers import BM25Index, MultiQuery, Reranker, Retriever
 from rpab.schemas import AskRequest, AskResponse, RetrievedChunk, Source
 
@@ -102,12 +104,20 @@ def _normalise(text: str) -> str:
 
 
 REFUSAL_OPENINGS = ("i don't know", "i do not know", "i dont know")
+# Refusals in other words, e.g. "There is no mention of Mamba in the provided context passages."
+NOT_IN_CONTEXT = re.compile(r"\b(no mention|not mentioned|no information|not (?:contain|provide|mention|include|"
+                            r"discuss|cover)|does not say|do not say|cannot be answered|can't be answered)")
 
 
 def is_refusal(text: str) -> bool:
-    """Loose match on the refusal sentence: case, curly quotes, punctuation and citation
-    markers are ignored, and any answer that opens with "I don't know" counts."""
-    return _normalise(text).startswith(REFUSAL_OPENINGS)
+    """Loose match on the refusal sentence: case, curly quotes, punctuation and citation markers
+    are ignored, and any answer that opens with "I don't know" counts. An answer that cites no
+    passage and whose first sentence says the context lacks the answer counts too."""
+    normalised = _normalise(text)
+    if normalised.startswith(REFUSAL_OPENINGS):
+        return True
+    first_sentence = re.split(r"(?<=[.!?])\s", text.strip(), maxsplit=1)[0]
+    return not cited_numbers(text) and bool(NOT_IN_CONTEXT.search(_normalise(first_sentence)))
 
 
 def snippet(text: str, limit: int = SNIPPET_CHARS) -> str:
@@ -120,7 +130,7 @@ def snippet(text: str, limit: int = SNIPPET_CHARS) -> str:
 
 def to_sources(chunks: list[RetrievedChunk]) -> list[Source]:
     return [Source(rank=rank, paper_title=c.paper_title, page=c.page, snippet=snippet(c.text),
-                   full_text=c.text, score=c.score)
+                   full_text=c.text, score=c.score, chunk_id=c.chunk_id, paper_id=c.paper_id)
             for rank, c in enumerate(chunks, start=1)]
 
 
@@ -149,7 +159,8 @@ class RagPipeline:
             return retriever.retrieve(inputs["question"], inputs["strategy"], inputs["k"], inputs["paper_ids"])
 
         generate = (
-            RunnableLambda(lambda x: {"context": format_context(x["docs"]), "question": x["question"]})
+            RunnableLambda(lambda x: {"context": format_context(x["docs"]), "question": x["question"],
+                                      "notice": WEAK_CONTEXT_NOTICE if retriever.is_weak(x["docs"]) else ""})
             | RAG_PROMPT
             | llm
             | StrOutputParser()

@@ -4,6 +4,7 @@ The system prompt states the rules from doc 02 (answer only from the numbered pa
 them as [1] to [n], refuse with the exact sentence in ``REFUSAL_TEXT``). Two few-shot turns
 show the behaviour: one answered with citations, one refused. Their passages come from a
 made-up paper, so the examples teach the format without leaking facts into real answers.
+When retrieval flags the context as weak, ``WEAK_CONTEXT_NOTICE`` is added to the question.
 """
 
 from langchain_core.prompts import ChatPromptTemplate
@@ -25,8 +26,14 @@ Rules:
 
 USER_TEMPLATE = """Context:
 {context}
-
+{notice}
 Question: {question}"""
+
+# Added to the user message when the top passage scores below the calibrated weak-context threshold.
+# Doc 03 still lets the model answer then; the notice only makes refusing the expected default.
+WEAK_CONTEXT_NOTICE = ("\nNote: these passages scored low for this question, so they may not contain the answer. "
+                       "Answer only if a passage states it directly; otherwise reply with the refusal sentence "
+                       "exactly.\n")
 
 # Few-shot passages from a fictional paper: the format is real, the content is not
 _EXAMPLE_CONTEXT = """[1] Paper: Sparse Gating for Efficient Sequence Models | Page: 4
@@ -42,14 +49,15 @@ Earlier sparse models routed each token to a single expert, which made training 
 
 FEW_SHOT = [
     ("human", USER_TEMPLATE.format(
-        context=_EXAMPLE_CONTEXT,
+        context=_EXAMPLE_CONTEXT, notice="",
         question="Which optimizer and learning rate schedule are used, and how does the gated model compare "
                  "with the dense baseline?")),
     ("ai", "The models are trained with Adam (beta1 = 0.9, beta2 = 0.98) at a peak learning rate of 3e-4, "
            "with a linear warm-up over the first 2,000 steps followed by cosine decay [1]. With 8 experts the "
            "gated model reaches a validation perplexity of 18.2, against 19.6 for the dense baseline of the "
            "same compute budget [2]."),
-    ("human", USER_TEMPLATE.format(context=_EXAMPLE_CONTEXT,
+    # The refusal example carries the notice, as a weak-context question would
+    ("human", USER_TEMPLATE.format(context=_EXAMPLE_CONTEXT, notice=WEAK_CONTEXT_NOTICE,
                                    question="How many GPUs were used to train the gated model?")),
     ("ai", REFUSAL_TEXT),
 ]
