@@ -133,6 +133,10 @@ class Config:
     # Conversation memory (stretch goal S1)
     memory_turns: int = 6
 
+    # Corrective RAG web fallback (stretch goal S3), used only when a request turns it on
+    web_results: int = 5
+    web_timeout_s: int = 8
+
     @property
     def chunk_spec(self):
         """The configured chunking as a ``ChunkSpec`` (imported lazily to keep config import-light)."""

@@ -13,6 +13,8 @@ Guarantees that do not depend on the model behaving:
   a refusal unless a passage answers directly (the model still decides, as in doc 03).
 - An answer that opens with "I don't know", or cites nothing and says the context lacks the
   answer, is replaced by the exact refusal sentence; the closest passages are still returned.
+- With ``web_fallback`` on (S3, ``rpab.crag``), a weak retrieval also searches the web; web results
+  are marked as such in the prompt and the sources, never passed off as paper citations.
 """
 
 import re
@@ -26,7 +28,8 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableBranch, RunnableLambda, RunnableParallel, RunnablePassthrough
 
 from rpab.config import CONFIG, REFUSAL_TEXT
-from rpab.prompts import RAG_PROMPT, WEAK_CONTEXT_NOTICE, format_context
+from rpab.crag import WebSearch, corrective_retrieve
+from rpab.prompts import RAG_PROMPT, WEAK_CONTEXT_NOTICE, WEB_NOTICE, format_context
 from rpab.retrievers import BM25Index, MultiQuery, Reranker, Retriever
 from rpab.schemas import AskRequest, AskResponse, RetrievedChunk, Source
 
@@ -130,7 +133,8 @@ def snippet(text: str, limit: int = SNIPPET_CHARS) -> str:
 
 def to_sources(chunks: list[RetrievedChunk]) -> list[Source]:
     return [Source(rank=rank, paper_title=c.paper_title, page=c.page, snippet=snippet(c.text),
-                   full_text=c.text, score=c.score, chunk_id=c.chunk_id, paper_id=c.paper_id)
+                   full_text=c.text, score=c.score, chunk_id=c.chunk_id,
+                   paper_id=None if c.origin == "web" else c.paper_id, origin=c.origin, url=c.url)
             for rank, c in enumerate(chunks, start=1)]
 
 
@@ -151,22 +155,37 @@ def _ms(seconds: float) -> int:
 class RagPipeline:
     """The LCEL chain over one retriever and one chat model."""
 
-    def __init__(self, retriever: Retriever, llm, config=CONFIG):
-        self.retriever, self.llm, self.config = retriever, llm, config
+    def __init__(self, retriever: Retriever, llm, config=CONFIG, web: WebSearch | None = None):
+        self.retriever, self.llm, self.config, self.web = retriever, llm, config, web
         self.model_name = getattr(llm, "model", "unknown")
 
         def retrieve(inputs: dict) -> list[RetrievedChunk]:
             return retriever.retrieve(inputs["question"], inputs["strategy"], inputs["k"], inputs["paper_ids"])
 
+        def correct(x: dict) -> dict:
+            """S3: search the web when the request allows it and the papers' best passage is weak."""
+            docs, note = x["docs"], None
+            if x["web"] and self.web is not None and retriever.is_weak(docs):
+                docs, note = corrective_retrieve(x["question"], docs, retriever, self.web, x["k"], config)
+            return {"docs": docs, "question": x["question"], "web_note": note}
+
+        def notice(docs: list[RetrievedChunk]) -> str:
+            has_web = any(c.origin == "web" for c in docs)
+            # Without a reranker web results carry no score, so the weak-context check does not apply to them
+            weak = retriever.is_weak(docs) and not (has_web and retriever.reranker is None)
+            return (WEB_NOTICE if has_web else "") + (WEAK_CONTEXT_NOTICE if weak else "")
+
         generate = (
             RunnableLambda(lambda x: {"context": format_context(x["docs"]), "question": x["question"],
-                                      "notice": WEAK_CONTEXT_NOTICE if retriever.is_weak(x["docs"]) else ""})
+                                      "notice": notice(x["docs"])})
             | RAG_PROMPT
             | llm
             | StrOutputParser()
         )
         self.chain = (
-            RunnableParallel(docs=RunnableLambda(retrieve), question=lambda x: x["question"])
+            RunnableParallel(docs=RunnableLambda(retrieve), question=lambda x: x["question"],
+                             web=lambda x: x.get("web", False), k=lambda x: x["k"])
+            | RunnableLambda(correct)
             # No passages (e.g. a paper filter that matches nothing): refuse without calling the LLM
             | RunnablePassthrough.assign(answer=RunnableBranch((lambda x: not x["docs"], lambda x: REFUSAL_TEXT),
                                                                generate))
@@ -175,26 +194,30 @@ class RagPipeline:
     def strategy_used(self, strategy: str) -> str:
         return "hybrid" if strategy == "hybrid_rerank" and self.retriever.reranker is None else strategy
 
-    def warm_up(self) -> None:
+    def warm_up(self, retrieval: bool = True, llm: bool = True) -> None:
         """Load the embedder, reranker and chat model, so the first timed question is not a cold start."""
-        self.retriever.retrieve("warm-up question about attention", self.strategy_used("hybrid_rerank"))
-        self.llm.invoke("Reply with OK.")
+        if retrieval:
+            self.retriever.retrieve("warm-up question about attention", self.strategy_used("hybrid_rerank"))
+        if llm:
+            self.llm.invoke("Reply with OK.")
 
     def stream(self, request: AskRequest) -> Iterator[dict]:
         """Events: ``{"event": "sources", ...}``, then ``{"event": "token", "text": ...}`` pieces,
         then ``{"event": "done", "response": AskResponse}``."""
         start = time.perf_counter()
         inputs = {"question": request.question, "strategy": request.strategy, "k": request.final_k,
-                  "paper_ids": request.paper_ids}
+                  "paper_ids": request.paper_ids, "web": request.web_fallback}
         docs: list[RetrievedChunk] = []
         shown: list[str] = []  # the cleaned text exactly as streamed
-        citation_filter, retrieval_s, first_token_s = CitationFilter(0), None, None
+        citation_filter, retrieval_s, first_token_s, web_note = CitationFilter(0), None, None, None
         for part in self.chain.stream(inputs):
+            if "web_note" in part:
+                web_note = part["web_note"]
             if "docs" in part:
                 docs, retrieval_s = part["docs"], time.perf_counter() - start
                 citation_filter = CitationFilter(len(docs))
                 yield {"event": "sources", "sources": to_sources(docs), "weak_context": self.retriever.is_weak(docs),
-                       "retrieval_ms": _ms(retrieval_s)}
+                       "retrieval_ms": _ms(retrieval_s), "web_note": web_note}
             if part.get("answer"):
                 if first_token_s is None:
                     first_token_s = time.perf_counter() - start
@@ -218,6 +241,8 @@ class RagPipeline:
             retrieval_ms=_ms(retrieval_s) if retrieval_s is not None else None,
             first_token_ms=_ms(first_token_s) if first_token_s is not None else None,
             removed_citations=citation_filter.removed,
+            used_web_fallback=any(c.origin == "web" for c in docs),
+            web_note=web_note,
         )
         yield {"event": "done", "response": response}
 
@@ -244,7 +269,8 @@ def load_pipeline(config=CONFIG, embedding: str | None = None, llm_model: str | 
     # the rewrite call and the answer call; app questions get their own cache, apart from the experiments'
     rewriter = MultiQuery(replace(config, rewrite_num_ctx=config.llm_num_ctx), config.paths.multi_query_app_cache)
     retriever = Retriever(config, embedder, collection, chunks, bm25, reranker, rewriter)
-    return RagPipeline(retriever, make_llm(config, llm_model), config)
+    web = WebSearch(config.web_results, config.web_timeout_s)  # only used when a request asks for it (S3)
+    return RagPipeline(retriever, make_llm(config, llm_model), config, web)
 
 
 @lru_cache(maxsize=1)

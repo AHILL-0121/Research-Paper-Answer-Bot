@@ -17,6 +17,7 @@ Capstone project for the GenAI Pinnacle Plus program.
 | Keyword search | `rank_bm25` |
 | Reranker | `BAAI/bge-reranker-v2-m3` |
 | Apps | Streamlit, and Next.js over FastAPI |
+| Web fallback (optional) | DuckDuckGo search via `ddgs`, no API key |
 
 ## Layout
 
@@ -110,3 +111,85 @@ per embedding model under `artifacts/chroma/`). Stages can be run on their own, 
 ```
 
 Then open `notebooks/capstone.ipynb` and run all cells.
+
+## Streamlit app
+
+The Streamlit app answers in the same process, with no API needed. Start Ollama, then:
+
+```powershell
+cd frontend\streamlit
+..\..\backend\.venv\Scripts\streamlit run app.py
+```
+
+It opens at `http://localhost:8501`. The page appears at once and the models load in the
+background (about 20 s on the GPU, once per server). The layout follows the design mockup:
+chats and settings on the left, the conversation in the middle, and a reader on the right that
+shows a cited passage on its page (with the sentence the answer drew on highlighted) or the
+paper library, whose checkboxes limit the search to chosen papers. Citation markers such as [1]
+jump to their source card; clicking a card opens it in the reader. "Show retrieval details"
+adds the query used, the weak-context flag and chunk scores to every answer. Chats are saved
+in `backend/artifacts/chat.db`, so follow-up questions use the conversation (see Memory below).
+
+Run either the Streamlit app or the API, not both: each loads the embedding model and the
+reranker onto the GPU.
+
+## Web app
+
+The Next.js app (`frontend/web`) runs over the API. Start Ollama and the API (see below), then:
+
+```powershell
+cd frontend\web
+npm install
+npm run dev
+```
+
+It opens at `http://localhost:3000` with the same three panes as the Streamlit app, and adds
+answers streamed word by word, citation chips that open their passage and preview it on hover,
+copy buttons, a link to the cited page on arXiv, saved chats that survive a page reload, and a
+light, dark or system theme. Below 1180 px the reader becomes a drawer, below 760 px the chats
+and settings do too. If the API is not running, the page says how to start it and connects by
+itself once it is up.
+
+## API
+
+The FastAPI service serves the Next.js app. Start Ollama first, then from `backend/`:
+
+```powershell
+.venv\Scripts\uvicorn api.main:app --port 8000
+```
+
+The server answers at once and loads the models in the background (about 20 s on the GPU);
+`/health` reports `loading` until they are ready. Interactive docs are at
+`http://localhost:8000/docs`.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /health` | Pipeline state, Ollama and model availability, active models and strategies |
+| `GET /papers` | The ingested papers with ids for the paper filter |
+| `POST /ask` | One answer as JSON (`AskRequest` in, `AskResponse` out) |
+| `POST /ask/stream` | The same answer as Server-Sent Events: `rewrite` (with a session), `sources`, `token` pieces, then `done` (or `error`) |
+| `GET /sessions` | Saved chats, most recent first |
+| `GET /sessions/{id}` | One chat with its messages and their sources |
+| `DELETE /sessions/{id}` | Clear history: deletes the chat, its messages and sources |
+
+**Memory.** A request with a `session_id` (8–64 letters, digits, `-` or `_`, chosen by the client,
+one per browser tab) is part of a conversation: the first question creates the session, and each
+follow-up is rewritten by the chat model into a standalone question from the last 6 messages
+before retrieval, so "What data type does it introduce?" searches for "What data type does QLoRA
+introduce?". The rewritten question is returned as `rewritten_question`. History is stored in
+`backend/artifacts/chat.db` (SQLite). Without a `session_id`, each question stands alone.
+
+Errors come back as `{"error": {"code": ..., "message": ...}}` with a message a user can act on,
+for example `ollama_unavailable`, `model_missing`, `index_not_built` or `warming_up`. The API
+handles one question at a time because the models share one GPU.
+
+**Web fallback (stretch goal S3).** Off by default; both apps have a "Web fallback (S3)" switch,
+and the API takes `"web_fallback": true`. When it is on and the best paper passage scores below
+the calibrated weak-context threshold, the question is also sent to DuckDuckGo. The reranker scores
+the web snippets against the question together with the paper passages and the best three are
+kept, so a web result is used only when it beats the papers. Web sources are marked WEB, show their
+address instead of a page, and the answer carries a note saying why the web was searched
+(`web_note`). If the search fails, the answer uses the papers alone and says so. With the switch
+on, the question leaves the machine; the apps say so next to the switch.
+
+Tests run without models or Ollama: `.venv\Scripts\python -m pytest`.

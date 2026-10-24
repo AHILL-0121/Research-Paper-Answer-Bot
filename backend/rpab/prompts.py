@@ -35,6 +35,11 @@ WEAK_CONTEXT_NOTICE = ("\nNote: these passages scored low for this question, so 
                        "Answer only if a passage states it directly; otherwise reply with the refusal sentence "
                        "exactly.\n")
 
+# Added when web search results are among the passages (S3); the papers stay the primary source
+WEB_NOTICE = ("\nNote: passages marked Web come from a web search, not from the indexed papers. Use them only "
+              "where they answer the question directly, cite them like the others, and say when a fact comes "
+              "from the web.\n")
+
 # Few-shot passages from a fictional paper: the format is real, the content is not
 _EXAMPLE_CONTEXT = """[1] Paper: Sparse Gating for Efficient Sequence Models | Page: 4
 We train all models with the Adam optimizer (beta1 = 0.9, beta2 = 0.98) and a peak learning rate of
@@ -71,6 +76,55 @@ RAG_PROMPT = ChatPromptTemplate.from_messages(
 
 
 def format_context(chunks: list[RetrievedChunk]) -> str:
-    """Number the passages 1 to n with their paper title and page, as the prompt cites them."""
-    return "\n\n".join(f"[{rank}] Paper: {c.paper_title} | Page: {c.page}\n{c.text.strip()}"
-                       for rank, c in enumerate(chunks, start=1))
+    """Number the passages 1 to n with their paper title and page (or web title and address),
+    as the prompt cites them."""
+    return "\n\n".join(
+        (f"[{rank}] Web: {c.paper_title} | {c.url}" if c.origin == "web" else
+         f"[{rank}] Paper: {c.paper_title} | Page: {c.page}") + f"\n{c.text.strip()}"
+        for rank, c in enumerate(chunks, start=1))
+
+
+# ---- follow-up rewriting (stretch S1) ----------------------------------------------------
+
+CONDENSE_SYSTEM = """You rewrite the user's latest question from a conversation about AI research papers into a
+standalone question that can be understood without the conversation.
+
+Rules:
+1. A question that leans on the conversation in any way is not standalone: a pronoun ("it", "they",
+   "this"), a reference such as "that paper" or "the second method", or a fragment such as
+   "And the large one?". Rewrite it with the names and the topic it refers to.
+2. Never leave "they" or "the authors" in the question: write the name of the paper or method instead.
+3. A reference points to the most recent exchange unless the user names an earlier topic.
+4. Keep the user's wording otherwise. Do not answer the question and do not add details.
+5. Only a question that is complete on its own and starts a new topic is returned unchanged.
+6. Reply with the question only, on one line."""
+
+CONDENSE_TEMPLATE = """Conversation:
+{history}
+
+Latest question: {question}
+
+Standalone question:"""
+
+# Examples from the same fictional paper as the answer prompt's, so no real facts leak into rewrites
+_CONDENSE_HISTORY = """User: How many experts does the Sparse Gating model use?
+Assistant: The base Sparse Gating model routes each token to 2 of 8 experts."""
+
+# Two topics: the reference belongs to the later one
+_CONDENSE_HISTORY_TWO_TOPICS = _CONDENSE_HISTORY + """
+User: What vocabulary size does the Sparse Gating tokenizer use?
+Assistant: The base tokenizer has a vocabulary of 32,000 tokens."""
+
+CONDENSE_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", CONDENSE_SYSTEM),
+    ("human", CONDENSE_TEMPLATE.format(history=_CONDENSE_HISTORY, question="What learning rate did they use?")),
+    ("ai", "What learning rate did the Sparse Gating paper use?"),
+    ("human", CONDENSE_TEMPLATE.format(history=_CONDENSE_HISTORY, question="And the large one?")),
+    ("ai", "How many experts does the large Sparse Gating model use?"),
+    ("human", CONDENSE_TEMPLATE.format(history=_CONDENSE_HISTORY_TWO_TOPICS, question="And the large one?")),
+    ("ai", "What vocabulary size does the large Sparse Gating tokenizer use?"),
+    ("human", CONDENSE_TEMPLATE.format(history=_CONDENSE_HISTORY,
+                                       question="What optimizer does the Transformer paper use?")),
+    ("ai", "What optimizer does the Transformer paper use?"),
+    ("human", CONDENSE_TEMPLATE),
+])

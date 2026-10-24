@@ -17,6 +17,8 @@ class RetrievedChunk(BaseModel):
     dense_score: Optional[float] = None  # cosine similarity
     bm25_score: Optional[float] = None
     rerank_score: Optional[float] = None  # cross-encoder probability, 0 to 1
+    origin: Literal["paper", "web"] = "paper"  # web: a search result snippet (S3); page is 0
+    url: Optional[str] = None
 
 
 class Source(BaseModel):
@@ -34,12 +36,27 @@ class Source(BaseModel):
     paper_id: Optional[str] = None
 
 
+class PaperInfo(BaseModel):
+    """One paper in the library, for the apps' paper list and filter."""
+
+    paper_id: str
+    paper_title: str
+    year: Optional[int] = None
+    arxiv_id: Optional[str] = None
+    url: Optional[str] = None
+    num_pages: Optional[int] = None
+    num_chunks: Optional[int] = None  # None until the index is built
+
+
 class AskRequest(BaseModel):
     question: str = Field(min_length=3, max_length=1000)
-    session_id: Optional[str] = None  # S1
+    # S1: chosen by the client (one per browser tab); the first question creates the session.
+    # Without one the question is answered on its own, with no memory
+    session_id: Optional[str] = Field(default=None, pattern=r"^[A-Za-z0-9_-]{8,64}$")
     strategy: Literal["dense", "mmr", "hybrid", "hybrid_rerank", "multi_query"] = "hybrid_rerank"
     paper_ids: Optional[list[str]] = None
     final_k: int = Field(default=3, ge=1, le=10)
+    web_fallback: bool = False  # S3: search the web when the papers' best passage is weak
 
 
 class AskResponse(BaseModel):
@@ -49,9 +66,37 @@ class AskResponse(BaseModel):
     rewritten_question: Optional[str] = None  # S1
     strategy_used: str  # differs from the request when hybrid_rerank falls back to hybrid (reranker off)
     latency_ms: int  # retrieval plus generation
-    used_web_fallback: bool = False  # S3
+    used_web_fallback: bool = False  # S3: at least one source is a web result
+    web_note: Optional[str] = None  # S3: why the web was searched and what came of it
     # Debug fields beyond doc 05's contract, shown in the apps' debug drawer
     weak_context: bool = False  # top passage scored below the calibrated threshold
     retrieval_ms: Optional[int] = None
+    rewrite_ms: Optional[int] = None  # S1: time spent condensing a follow-up
     first_token_ms: Optional[int] = None  # from the request to the first answer token
     removed_citations: list[str] = []  # markers the sanitiser dropped, e.g. ["[4]"]
+
+
+# ---- chat history (S1, doc 05 section 7) ---------------------------------------------------
+
+class SessionSummary(BaseModel):
+    session_id: str
+    title: Optional[str] = None  # the first question, truncated
+    created_at: str  # ISO 8601 UTC
+    last_active: str
+    num_messages: int = 0
+
+
+class ChatMessage(BaseModel):
+    message_id: int
+    role: Literal["user", "assistant"]
+    content: str
+    rewritten_question: Optional[str] = None  # user turns: the standalone query used for retrieval
+    refused: bool = False
+    strategy: Optional[str] = None
+    latency_ms: Optional[int] = None
+    created_at: str
+    sources: list[Source] = []  # assistant turns
+
+
+class SessionDetail(SessionSummary):
+    messages: list[ChatMessage] = []
