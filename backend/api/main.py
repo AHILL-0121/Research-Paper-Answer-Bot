@@ -52,6 +52,8 @@ class Health(BaseModel):
     strategies: list[str]
     profile: str
     num_papers: int
+    chunking: str  # the index's chunking slug, e.g. fixed_512_0_noref
+    weak_threshold: Optional[float] = None  # top rerank score below which context counts as weak
 
 
 def create_app(runtime: Runtime | None = None, background_load: bool = True) -> FastAPI:
@@ -108,6 +110,8 @@ def create_app(runtime: Runtime | None = None, background_load: bool = True) -> 
             strategies=STRATEGIES,
             profile=config.profile,
             num_papers=len(list_papers(config)),
+            chunking=config.chunk_spec.slug,
+            weak_threshold=config.confidence_thresholds.get("rerank") if config.use_reranker else None,
         )
 
     @app.get("/papers", response_model=list[PaperInfo])

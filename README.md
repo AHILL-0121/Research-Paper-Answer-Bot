@@ -132,6 +132,23 @@ in `backend/artifacts/chat.db`, so follow-up questions use the conversation (see
 Run either the Streamlit app or the API, not both: each loads the embedding model and the
 reranker onto the GPU.
 
+## Web app
+
+The Next.js app (`frontend/web`) runs over the API. Start Ollama and the API (see below), then:
+
+```powershell
+cd frontend\web
+npm install
+npm run dev
+```
+
+It opens at `http://localhost:3000` with the same three panes as the Streamlit app, and adds
+answers streamed word by word, citation chips that open their passage and preview it on hover,
+copy buttons, a link to the cited page on arXiv, saved chats that survive a page reload, and a
+light, dark or system theme. Below 1180 px the reader becomes a drawer, below 760 px the chats
+and settings do too. If the API is not running, the page says how to start it and connects by
+itself once it is up.
+
 ## API
 
 The FastAPI service serves the Next.js app. Start Ollama first, then from `backend/`:
