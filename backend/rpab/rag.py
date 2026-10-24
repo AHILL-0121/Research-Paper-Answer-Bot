@@ -175,10 +175,12 @@ class RagPipeline:
     def strategy_used(self, strategy: str) -> str:
         return "hybrid" if strategy == "hybrid_rerank" and self.retriever.reranker is None else strategy
 
-    def warm_up(self) -> None:
+    def warm_up(self, retrieval: bool = True, llm: bool = True) -> None:
         """Load the embedder, reranker and chat model, so the first timed question is not a cold start."""
-        self.retriever.retrieve("warm-up question about attention", self.strategy_used("hybrid_rerank"))
-        self.llm.invoke("Reply with OK.")
+        if retrieval:
+            self.retriever.retrieve("warm-up question about attention", self.strategy_used("hybrid_rerank"))
+        if llm:
+            self.llm.invoke("Reply with OK.")
 
     def stream(self, request: AskRequest) -> Iterator[dict]:
         """Events: ``{"event": "sources", ...}``, then ``{"event": "token", "text": ...}`` pieces,

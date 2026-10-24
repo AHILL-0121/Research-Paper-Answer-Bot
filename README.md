@@ -110,3 +110,28 @@ per embedding model under `artifacts/chroma/`). Stages can be run on their own, 
 ```
 
 Then open `notebooks/capstone.ipynb` and run all cells.
+
+## API
+
+The FastAPI service serves the Next.js app. Start Ollama first, then from `backend/`:
+
+```powershell
+.venv\Scripts\uvicorn api.main:app --port 8000
+```
+
+The server answers at once and loads the models in the background (about 20 s on the GPU);
+`/health` reports `loading` until they are ready. Interactive docs are at
+`http://localhost:8000/docs`.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /health` | Pipeline state, Ollama and model availability, active models and strategies |
+| `GET /papers` | The ingested papers with ids for the paper filter |
+| `POST /ask` | One answer as JSON (`AskRequest` in, `AskResponse` out) |
+| `POST /ask/stream` | The same answer as Server-Sent Events: `sources`, `token` pieces, then `done` (or `error`) |
+
+Errors come back as `{"error": {"code": ..., "message": ...}}` with a message a user can act on,
+for example `ollama_unavailable`, `model_missing`, `index_not_built` or `warming_up`. The API
+handles one question at a time because the models share one GPU.
+
+Tests run without models or Ollama: `.venv\Scripts\python -m pytest`.

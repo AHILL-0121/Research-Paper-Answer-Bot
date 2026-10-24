@@ -34,6 +34,18 @@ class Source(BaseModel):
     paper_id: Optional[str] = None
 
 
+class PaperInfo(BaseModel):
+    """One paper in the library, for the apps' paper list and filter."""
+
+    paper_id: str
+    paper_title: str
+    year: Optional[int] = None
+    arxiv_id: Optional[str] = None
+    url: Optional[str] = None
+    num_pages: Optional[int] = None
+    num_chunks: Optional[int] = None  # None until the index is built
+
+
 class AskRequest(BaseModel):
     question: str = Field(min_length=3, max_length=1000)
     session_id: Optional[str] = None  # S1
