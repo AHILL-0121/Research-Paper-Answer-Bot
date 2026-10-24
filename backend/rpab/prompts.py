@@ -94,24 +94,29 @@ Rules:
    "this"), a reference such as "that paper" or "the second method", or a fragment such as
    "And the large one?". Rewrite it with the names and the topic it refers to.
 2. Never leave "they" or "the authors" in the question: write the name of the paper or method instead.
-3. A reference points to the most recent exchange unless the user names an earlier topic.
+3. A reference points to the topic of the most recent exchange, not to earlier messages, unless the
+   user names an earlier topic.
 4. Keep the user's wording otherwise. Do not answer the question and do not add details.
 5. Only a question that is complete on its own and starts a new topic is returned unchanged.
 6. Reply with the question only, on one line."""
 
-CONDENSE_TEMPLATE = """Conversation:
-{history}
+CONDENSE_TEMPLATE = """{history}
 
 Latest question: {question}
 
 Standalone question:"""
 
 # Examples from the same fictional paper as the answer prompt's, so no real facts leak into rewrites
-_CONDENSE_HISTORY = """User: How many experts does the Sparse Gating model use?
+# Laid out as QuestionRewriter.format_history lays out a real conversation
+_CONDENSE_HISTORY = """Most recent exchange:
+User: How many experts does the Sparse Gating model use?
 Assistant: The base Sparse Gating model routes each token to 2 of 8 experts."""
 
 # Two topics: the reference belongs to the later one
-_CONDENSE_HISTORY_TWO_TOPICS = _CONDENSE_HISTORY + """
+_CONDENSE_HISTORY_TWO_TOPICS = """Earlier in the conversation:
+User: How many experts does the Sparse Gating model use?
+
+Most recent exchange:
 User: What vocabulary size does the Sparse Gating tokenizer use?
 Assistant: The base tokenizer has a vocabulary of 32,000 tokens."""
 
