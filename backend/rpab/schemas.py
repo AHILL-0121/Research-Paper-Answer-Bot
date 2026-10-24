@@ -48,7 +48,9 @@ class PaperInfo(BaseModel):
 
 class AskRequest(BaseModel):
     question: str = Field(min_length=3, max_length=1000)
-    session_id: Optional[str] = None  # S1
+    # S1: chosen by the client (one per browser tab); the first question creates the session.
+    # Without one the question is answered on its own, with no memory
+    session_id: Optional[str] = Field(default=None, pattern=r"^[A-Za-z0-9_-]{8,64}$")
     strategy: Literal["dense", "mmr", "hybrid", "hybrid_rerank", "multi_query"] = "hybrid_rerank"
     paper_ids: Optional[list[str]] = None
     final_k: int = Field(default=3, ge=1, le=10)
@@ -65,5 +67,32 @@ class AskResponse(BaseModel):
     # Debug fields beyond doc 05's contract, shown in the apps' debug drawer
     weak_context: bool = False  # top passage scored below the calibrated threshold
     retrieval_ms: Optional[int] = None
+    rewrite_ms: Optional[int] = None  # S1: time spent condensing a follow-up
     first_token_ms: Optional[int] = None  # from the request to the first answer token
     removed_citations: list[str] = []  # markers the sanitiser dropped, e.g. ["[4]"]
+
+
+# ---- chat history (S1, doc 05 section 7) ---------------------------------------------------
+
+class SessionSummary(BaseModel):
+    session_id: str
+    title: Optional[str] = None  # the first question, truncated
+    created_at: str  # ISO 8601 UTC
+    last_active: str
+    num_messages: int = 0
+
+
+class ChatMessage(BaseModel):
+    message_id: int
+    role: Literal["user", "assistant"]
+    content: str
+    rewritten_question: Optional[str] = None  # user turns: the standalone query used for retrieval
+    refused: bool = False
+    strategy: Optional[str] = None
+    latency_ms: Optional[int] = None
+    created_at: str
+    sources: list[Source] = []  # assistant turns
+
+
+class SessionDetail(SessionSummary):
+    messages: list[ChatMessage] = []

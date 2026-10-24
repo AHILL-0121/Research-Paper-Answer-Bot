@@ -128,7 +128,17 @@ The server answers at once and loads the models in the background (about 20 s on
 | `GET /health` | Pipeline state, Ollama and model availability, active models and strategies |
 | `GET /papers` | The ingested papers with ids for the paper filter |
 | `POST /ask` | One answer as JSON (`AskRequest` in, `AskResponse` out) |
-| `POST /ask/stream` | The same answer as Server-Sent Events: `sources`, `token` pieces, then `done` (or `error`) |
+| `POST /ask/stream` | The same answer as Server-Sent Events: `rewrite` (with a session), `sources`, `token` pieces, then `done` (or `error`) |
+| `GET /sessions` | Saved chats, most recent first |
+| `GET /sessions/{id}` | One chat with its messages and their sources |
+| `DELETE /sessions/{id}` | Clear history: deletes the chat, its messages and sources |
+
+**Memory.** A request with a `session_id` (8–64 letters, digits, `-` or `_`, chosen by the client,
+one per browser tab) is part of a conversation: the first question creates the session, and each
+follow-up is rewritten by the chat model into a standalone question from the last 6 messages
+before retrieval, so "What data type does it introduce?" searches for "What data type does QLoRA
+introduce?". The rewritten question is returned as `rewritten_question`. History is stored in
+`backend/artifacts/chat.db` (SQLite). Without a `session_id`, each question stands alone.
 
 Errors come back as `{"error": {"code": ..., "message": ...}}` with a message a user can act on,
 for example `ollama_unavailable`, `model_missing`, `index_not_built` or `warming_up`. The API

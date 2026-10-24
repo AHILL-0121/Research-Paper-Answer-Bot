@@ -13,6 +13,7 @@ from typing import Callable
 import httpx
 
 from rpab.config import CONFIG
+from rpab.memory import ChatStore, Conversation
 
 log = logging.getLogger("rpab.api")
 
@@ -69,12 +70,14 @@ def diagnose(exc: Exception, config=CONFIG) -> ApiError:
 
 
 class Runtime:
-    """Owns the pipeline. ``state`` is ``loading``, ``ready`` or ``error``."""
+    """Owns the pipeline and the chat history. ``state`` is ``loading``, ``ready`` or ``error``;
+    the history is usable at once, without waiting for the models."""
 
     def __init__(self, config=CONFIG, loader: Callable | None = None):
         self.config = config
         self.loader = loader
-        self.state, self.error, self.pipeline = "loading", None, None
+        self.state, self.error, self.pipeline, self.chat = "loading", None, None, None
+        self.store = ChatStore(config.paths.chat_db)
         self.lock = threading.Lock()
 
     def start(self, background: bool = True) -> None:
@@ -99,7 +102,8 @@ class Runtime:
                     raise index_not_built() from exc
                 raise
             pipeline.warm_up(llm=False)
-            self.pipeline, self.state = pipeline, "ready"
+            self.pipeline, self.chat = pipeline, Conversation(pipeline, self.store, self.config)
+            self.state = "ready"
             log.info("Pipeline ready (%s)", pipeline.model_name)
         except Exception as exc:
             self.error = exc if isinstance(exc, ApiError) else ApiError(
@@ -115,10 +119,10 @@ class Runtime:
         except Exception as exc:
             log.warning("Chat model warm-up skipped: %s", diagnose(exc, self.config).message)
 
-    def ready_pipeline(self):
-        """The loaded pipeline, or the ``ApiError`` that explains why there is none yet."""
+    def ready_chat(self) -> Conversation:
+        """The pipeline with memory, or the ``ApiError`` that explains why it is not loaded yet."""
         if self.state == "ready":
-            return self.pipeline
+            return self.chat
         if self.state == "loading":
             raise ApiError(503, "warming_up", "The models are still loading (about 30 seconds after start). "
                            "Ask again in a moment.")

@@ -4,9 +4,10 @@ Run from the backend folder:
 
     .venv\\Scripts\\uvicorn api.main:app --port 8000
 
-Endpoints: ``GET /health``, ``GET /papers``, ``POST /ask`` (one JSON answer) and
-``POST /ask/stream`` (Server-Sent Events: ``sources``, then ``token`` pieces, then ``done``
-with the full ``AskResponse``, or ``error``). Requests and responses use the same Pydantic
+Endpoints: ``GET /health``, ``GET /papers``, ``POST /ask`` (one JSON answer),
+``POST /ask/stream`` (Server-Sent Events: ``rewrite`` when the request has a session, ``sources``,
+then ``token`` pieces, then ``done`` with the full ``AskResponse``, or ``error``) and the chat
+history: ``GET /sessions``, ``GET /sessions/{id}``, ``DELETE /sessions/{id}`` (stretch S1). Requests and responses use the same Pydantic
 models as ``rpab.rag.answer``. Errors have the shape ``{"error": {"code": ..., "message": ...}}``.
 """
 
@@ -15,7 +16,7 @@ from collections.abc import Iterator
 from contextlib import asynccontextmanager
 from typing import Literal, Optional
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Path, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -25,11 +26,12 @@ from pydantic import BaseModel
 from api.runtime import ApiError, Runtime, diagnose, full_tag, ollama_models
 from rpab.config import CONFIG
 from rpab.papers import list_papers, unknown_paper_ids
-from rpab.schemas import AskRequest, AskResponse, PaperInfo
+from rpab.schemas import AskRequest, AskResponse, PaperInfo, SessionDetail, SessionSummary
 
 CORS_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]  # the Next.js dev server
 LOCK_TIMEOUT_S = 120  # a question waits this long for the one before it, then gets "busy"
 STRATEGIES = ["dense", "mmr", "hybrid", "hybrid_rerank", "multi_query"]
+SESSION_ID = Path(pattern=r"^[A-Za-z0-9_-]{8,64}$")
 
 
 class ErrorInfo(BaseModel):
@@ -75,7 +77,7 @@ def create_app(runtime: Runtime | None = None, background_load: bool = True) -> 
         return JSONResponse(ApiError(422, "invalid_request", f"{field}: {first['msg']}").body(), status_code=422)
 
     def pipeline():
-        return runtime.ready_pipeline()
+        return runtime.ready_chat()
 
     def checked(request: AskRequest) -> AskRequest:
         unknown = unknown_paper_ids(request.paper_ids, runtime.config)
@@ -138,6 +140,23 @@ def create_app(runtime: Runtime | None = None, background_load: bool = True) -> 
             yield ServerSentEvent(event="error", data=diagnose(exc, runtime.config).body()["error"])
         finally:
             runtime.lock.release()
+
+    @app.get("/sessions", response_model=list[SessionSummary])
+    def sessions() -> list[SessionSummary]:
+        return runtime.store.list_sessions()
+
+    @app.get("/sessions/{session_id}", response_model=SessionDetail)
+    def session(session_id: str = SESSION_ID) -> SessionDetail:
+        # Full passages come from the chunk table once the pipeline has loaded; snippets until then
+        detail = runtime.chat.session(session_id) if runtime.chat else runtime.store.get_session(session_id)
+        if detail is None:
+            raise ApiError(404, "session_not_found", "This chat has no saved messages.")
+        return detail
+
+    @app.delete("/sessions/{session_id}", status_code=204)
+    def delete_session(session_id: str = SESSION_ID) -> Response:
+        runtime.store.delete_session(session_id)  # clearing an empty chat is not an error
+        return Response(status_code=204)
 
     return app
 
