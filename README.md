@@ -111,6 +111,27 @@ per embedding model under `artifacts/chroma/`). Stages can be run on their own, 
 
 Then open `notebooks/capstone.ipynb` and run all cells.
 
+## Streamlit app
+
+The Streamlit app answers in the same process, with no API needed. Start Ollama, then:
+
+```powershell
+cd frontend\streamlit
+..\..\backend\.venv\Scripts\streamlit run app.py
+```
+
+It opens at `http://localhost:8501`. The page appears at once and the models load in the
+background (about 20 s on the GPU, once per server). The layout follows the design mockup:
+chats and settings on the left, the conversation in the middle, and a reader on the right that
+shows a cited passage on its page (with the sentence the answer drew on highlighted) or the
+paper library, whose checkboxes limit the search to chosen papers. Citation markers such as [1]
+jump to their source card; clicking a card opens it in the reader. "Show retrieval details"
+adds the query used, the weak-context flag and chunk scores to every answer. Chats are saved
+in `backend/artifacts/chat.db`, so follow-up questions use the conversation (see Memory below).
+
+Run either the Streamlit app or the API, not both: each loads the embedding model and the
+reranker onto the GPU.
+
 ## API
 
 The FastAPI service serves the Next.js app. Start Ollama first, then from `backend/`:

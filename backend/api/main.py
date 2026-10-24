@@ -23,8 +23,9 @@ from fastapi.responses import JSONResponse
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from pydantic import BaseModel
 
-from api.runtime import ApiError, Runtime, diagnose, full_tag, ollama_models
+from api.runtime import Runtime
 from rpab.config import CONFIG
+from rpab.errors import ApiError, diagnose, full_tag, ollama_models
 from rpab.papers import list_papers, unknown_paper_ids
 from rpab.schemas import AskRequest, AskResponse, PaperInfo, SessionDetail, SessionSummary
 

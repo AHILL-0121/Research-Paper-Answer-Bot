@@ -1,0 +1,46 @@
+# Theme from plan/SampleUI.html: white sheet on a grey desk, fountain-pen blue for actions and citations.
+# Light and dark follow the viewer's system setting; both can be picked in the app's settings menu.
+
+[theme]
+font = "IBM Plex Sans:https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+headingFont = "Source Serif 4:https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap"
+codeFont = "IBM Plex Mono:https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap"
+baseFontSize = 15
+baseRadius = "6px"
+showSidebarBorder = true
+
+[theme.light]
+primaryColor = "#2F3C9E"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F2F3F6"
+textColor = "#1A1D24"
+borderColor = "#D8DBE1"
+linkColor = "#2F3C9E"
+
+[theme.light.sidebar]
+backgroundColor = "#ECEEF1"
+secondaryBackgroundColor = "#FFFFFF"
+
+[theme.dark]
+primaryColor = "#A9B2FF"
+backgroundColor = "#181B21"
+secondaryBackgroundColor = "#1F2229"
+textColor = "#E6E8EC"
+borderColor = "#2C3038"
+linkColor = "#A9B2FF"
+
+[theme.dark.sidebar]
+backgroundColor = "#111317"
+secondaryBackgroundColor = "#181B21"
+
+[client]
+toolbarMode = "minimal"
+showErrorDetails = "none"   # no stack traces on screen; the terminal log has them
+
+[server]
+# Streamlit's file watcher walks every imported module; transformers' lazy vision modules make it
+# print about a hundred harmless tracebacks. The app does not need live reload.
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false

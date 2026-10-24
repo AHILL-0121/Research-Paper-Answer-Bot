@@ -129,7 +129,7 @@ def test_ollama_down_is_reported(config):
 def test_unexpected_errors_hide_the_trace(config, monkeypatch):
     pipeline = FakePipeline(fail=KeyError("secret internals"))
     config = replace(config, llm_model="present:latest")
-    monkeypatch.setattr("api.runtime.ollama_models", lambda cfg: ["present:latest"])
+    monkeypatch.setattr("rpab.errors.ollama_models", lambda cfg: ["present:latest"])
     with client_for(config, pipeline) as client:
         reply = client.post("/ask", json=QUESTION)
     assert reply.status_code == 500
