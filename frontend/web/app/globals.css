@@ -172,6 +172,7 @@
   .web-note { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; color: var(--ink-2); padding: 10px 12px;
               border-radius: 6px; background: var(--web-bg); }
   .web-note svg { color: var(--web); margin-top: 2px; }
+  .web-note b { color: var(--web); font-weight: 600; }
   .err { padding: 14px 16px; border-radius: 8px; background: var(--danger-bg); color: var(--ink); display: flex; flex-direction: column; gap: 8px; }
   .err .k { font: 500 11px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--danger); }
   .err p { margin: 0; }

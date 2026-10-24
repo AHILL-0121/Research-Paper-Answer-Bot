@@ -13,6 +13,7 @@ export type TurnState = {
   text: string; // the answer so far, while streaming
   strategy: string; // requested; the response says which one ran
   scope: string; // "all 11 papers" or "3 of 11 papers"
+  webNote?: string | null; // S3, from the sources event, before the answer is done
   response?: AskResponse;
   error?: { code: string; message: string };
 };
@@ -37,6 +38,7 @@ function Ticks({ score }: { score: number }) {
 }
 
 function Score({ source, strategy }: { source: Source; strategy: string }) {
+  if (source.origin === "web" && !isReranked(strategy)) return null; // unscored without a reranker
   if (isReranked(strategy) && source.score >= 0 && source.score <= 1) {
     return <><Ticks score={source.score} /><span>{source.score.toFixed(2)}</span></>;
   }
@@ -68,6 +70,8 @@ export function Turn({ turn, index, openRank, flashRank, debug, health, sessionI
   const strategy = r?.strategy_used ?? turn.strategy;
   const showSteps = turn.status === "loading" || (turn.status === "streaming" && !turn.text);
   const stage = turn.sources.length ? 2 : 0;
+  const webNote = r?.web_note ?? turn.webNote;
+  const usedWeb = r ? r.used_web_fallback : turn.sources.some((s) => s.origin === "web");
 
   return (
     <article className="turn">
@@ -103,6 +107,13 @@ export function Turn({ turn, index, openRank, flashRank, debug, health, sessionI
                   );
                 })}
               </ol>
+            </div>
+          )}
+
+          {webNote && (
+            <div className="web-note" role="note">
+              <Icon name="globe" />
+              <span>{usedWeb && <b>Includes web results. </b>}{webNote}</span>
             </div>
           )}
 

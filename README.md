@@ -17,6 +17,7 @@ Capstone project for the GenAI Pinnacle Plus program.
 | Keyword search | `rank_bm25` |
 | Reranker | `BAAI/bge-reranker-v2-m3` |
 | Apps | Streamlit, and Next.js over FastAPI |
+| Web fallback (optional) | DuckDuckGo search via `ddgs`, no API key |
 
 ## Layout
 
@@ -181,5 +182,14 @@ introduce?". The rewritten question is returned as `rewritten_question`. History
 Errors come back as `{"error": {"code": ..., "message": ...}}` with a message a user can act on,
 for example `ollama_unavailable`, `model_missing`, `index_not_built` or `warming_up`. The API
 handles one question at a time because the models share one GPU.
+
+**Web fallback (stretch goal S3).** Off by default; both apps have a "Web fallback (S3)" switch,
+and the API takes `"web_fallback": true`. When it is on and the best paper passage scores below
+the calibrated weak-context threshold, the question is also sent to DuckDuckGo. The reranker scores
+the web snippets against the question together with the paper passages and the best three are
+kept, so a web result is used only when it beats the papers. Web sources are marked WEB, show their
+address instead of a page, and the answer carries a note saying why the web was searched
+(`web_note`). If the search fails, the answer uses the papers alone and says so. With the switch
+on, the question leaves the machine; the apps say so next to the switch.
 
 Tests run without models or Ollama: `.venv\Scripts\python -m pytest`.

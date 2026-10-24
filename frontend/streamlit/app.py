@@ -98,6 +98,7 @@ def init_state() -> None:
     ss.setdefault("reader_tab", "Library")
     ss.setdefault("strategy", DEFAULT_STRATEGY)
     ss.setdefault("debug", False)
+    ss.setdefault("web", False)  # S3 web fallback, off until the user turns it on
     ss.setdefault("pending", None)
     for p in papers():
         ss.setdefault(f"paper-{p.paper_id}", True)
@@ -141,7 +142,8 @@ def load_session(session_id: str) -> None:
         response = AskResponse(answer=assistant.content, sources=assistant.sources, refused=assistant.refused,
                                rewritten_question=user.rewritten_question,
                                strategy_used=assistant.strategy or DEFAULT_STRATEGY,
-                               latency_ms=assistant.latency_ms or 0)
+                               latency_ms=assistant.latency_ms or 0,
+                               used_web_fallback=any(s.origin == "web" for s in assistant.sources))
         turns.append({"question": user.content, "response": response, "error": None, "scope": "the selected papers"})
     ss.session_id, ss.turns, ss.open, ss.reader_tab, ss.pending = session_id, turns, None, "Library", None
 
@@ -172,6 +174,10 @@ def select_all(value: bool) -> None:
         ss[f"paper-{p.paper_id}"] = value
 
 
+def web_changed() -> None:
+    st.toast("Web fallback on: weak matches are also sent to DuckDuckGo" if ss.web else "Web fallback off")
+
+
 def strategy_changed() -> None:
     st.toast(f"Next question uses {ui.STRATEGY_LABELS[ss.strategy]} retrieval")
 
@@ -199,6 +205,11 @@ def render_rail():
                      format_func=ui.STRATEGY_LABELS.get, on_change=strategy_changed,
                      help="Applies to the next question. Hybrid + rerank is the strategy chosen in the notebook.")
         st.toggle("Show retrieval details", key="debug")
+        st.toggle("Web fallback (S3)", key="web", on_change=web_changed,
+                  help="When the papers match a question only weakly, the question is also sent to DuckDuckGo "
+                       "and the best web results are added, marked WEB. Off by default.")
+        if ss.web:
+            st.caption("Weak matches send the question to DuckDuckGo, a third-party search service.")
         with st.expander("Demo questions"):
             for k, question in enumerate(DEMO):
                 st.button(question, key=f"textbtn-demo-{k}", on_click=ask, args=(question,))
@@ -262,6 +273,7 @@ def render_turn(t: int, turn: dict) -> None:
             for k, question in enumerate(suggestions(t)):
                 chips[k].button(question, key=f"chip-{t}-{k}", on_click=ask, args=(question,))
 
+    st.html(ui.web_note(response.web_note, response.used_web_fallback))
     if response.sources:
         st.html(ui.sources_header(response.refused))
         with st.container(key=f"srcs-{'dim-' if response.refused else ''}{t}"):
@@ -284,6 +296,8 @@ def live_html(question: str, live: dict) -> str:
     parts = [f'<h2 class="ask">{ui.esc(question)}</h2>', ui.searched(live["rewritten"], question)]
     if live["sources"] is None or not live["text"]:
         parts.append(ui.steps(live["stage"], live["details"]))
+    if live["web_note"]:
+        parts.append(ui.web_note(live["web_note"], any(s.origin == "web" for s in live["sources"] or [])))
     if live["sources"]:
         cards = "".join(ui.source_card(s, -1, live["strategy"], False) for s in live["sources"][:3])
         parts.append(ui.sources_header(False)
@@ -308,9 +322,10 @@ def run_pending(question: str) -> None:
         st.toast("Select at least one paper in the Library tab")
         return
     scope = scope_label(selected)
-    request = AskRequest(question=question, session_id=ss.session_id, strategy=ss.strategy,
+    request = AskRequest(question=question, session_id=ss.session_id, strategy=ss.strategy, web_fallback=ss.web,
                          paper_ids=None if len(selected) == len(papers()) else selected)
-    live = {"stage": 0, "details": {}, "rewritten": None, "sources": None, "text": "", "strategy": ss.strategy}
+    live = {"stage": 0, "details": {}, "rewritten": None, "sources": None, "text": "", "strategy": ss.strategy,
+            "web_note": None}
     slot = st.empty()
     slot.html(live_html(question, live))
     turn = {"question": question, "response": None, "error": None, "scope": scope}
@@ -324,7 +339,7 @@ def run_pending(question: str) -> None:
                 if kind == "rewrite":
                     live["rewritten"] = event["rewritten_question"]
                 elif kind == "sources":
-                    live.update(sources=event["sources"], stage=2,
+                    live.update(sources=event["sources"], stage=2, web_note=event.get("web_note"),
                                 details={0: f"{scope} · 20 candidates", 1: f"{len(event['sources'])} kept"})
                 elif kind == "token":
                     live["text"] += event["text"]
@@ -384,7 +399,7 @@ def render_passage() -> None:
     st.html(ui.reader_page(source, paper, response.answer, response.refused))
     st.html(ui.reader_facts(source, paper))
     st.caption("Citation (copy with the icon)")
-    st.code(f"{source.paper_title}, p. {source.page}", language=None, wrap_lines=True)
+    st.code(ui.citation(source), language=None, wrap_lines=True)
 
 
 def render_library() -> None:

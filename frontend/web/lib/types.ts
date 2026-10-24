@@ -22,6 +22,7 @@ export interface AskRequest {
   strategy?: Strategy;
   paper_ids?: string[] | null;
   final_k?: number;
+  web_fallback?: boolean; // S3: search the web when the papers' best passage is weak
 }
 
 export interface AskResponse {
@@ -31,7 +32,8 @@ export interface AskResponse {
   rewritten_question?: string | null;
   strategy_used: string;
   latency_ms: number;
-  used_web_fallback: boolean;
+  used_web_fallback: boolean; // at least one source is a web result
+  web_note?: string | null; // why the web was searched and what came of it
   weak_context: boolean;
   retrieval_ms?: number | null;
   rewrite_ms?: number | null;
@@ -68,6 +70,7 @@ export interface Health {
   num_papers: number;
   chunking: string;
   weak_threshold?: number | null;
+  web_search: boolean; // the S3 web fallback can run
 }
 
 export interface SessionSummary {
@@ -97,7 +100,7 @@ export interface SessionDetail extends SessionSummary {
 // Server-Sent Events from POST /ask/stream
 export type StreamEvent =
   | { event: "rewrite"; rewritten_question: string; rewrite_ms: number | null }
-  | { event: "sources"; sources: Source[]; weak_context: boolean; retrieval_ms: number }
+  | { event: "sources"; sources: Source[]; weak_context: boolean; retrieval_ms: number; web_note?: string | null }
   | { event: "token"; text: string }
   | { event: "done"; response: AskResponse }
   | { event: "error"; error: ErrorInfo };

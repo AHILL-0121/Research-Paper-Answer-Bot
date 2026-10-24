@@ -11,6 +11,7 @@ history: ``GET /sessions``, ``GET /sessions/{id}``, ``DELETE /sessions/{id}`` (s
 models as ``rpab.rag.answer``. Errors have the shape ``{"error": {"code": ..., "message": ...}}``.
 """
 
+import importlib.util
 import logging
 from collections.abc import Iterator
 from contextlib import asynccontextmanager
@@ -54,6 +55,7 @@ class Health(BaseModel):
     num_papers: int
     chunking: str  # the index's chunking slug, e.g. fixed_512_0_noref
     weak_threshold: Optional[float] = None  # top rerank score below which context counts as weak
+    web_search: bool  # S3: the web fallback can run (the search package is installed)
 
 
 def create_app(runtime: Runtime | None = None, background_load: bool = True) -> FastAPI:
@@ -112,6 +114,7 @@ def create_app(runtime: Runtime | None = None, background_load: bool = True) -> 
             num_papers=len(list_papers(config)),
             chunking=config.chunk_spec.slug,
             weak_threshold=config.confidence_thresholds.get("rerank") if config.use_reranker else None,
+            web_search=importlib.util.find_spec("ddgs") is not None,
         )
 
     @app.get("/papers", response_model=list[PaperInfo])

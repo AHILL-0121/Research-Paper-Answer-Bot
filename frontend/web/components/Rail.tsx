@@ -12,15 +12,17 @@ type Props = {
   sessions: SessionSummary[];
   sessionId: string;
   debug: boolean;
+  web: boolean;
   theme: Theme;
   onNewChat: () => void;
   onLoad: (sessionId: string) => void;
   onDebug: (on: boolean) => void;
+  onWeb: (on: boolean) => void;
   onTheme: (theme: Theme) => void;
   onClear: () => void;
 };
 
-export function Rail({ open, health, numPapers, sessions, sessionId, debug, theme, ...on }: Props) {
+export function Rail({ open, health, numPapers, sessions, sessionId, debug, web, theme, ...on }: Props) {
   const embed = health?.embedding_model.split("/").pop();
   return (
     <nav className={`rail ${open ? "open" : ""}`} aria-label="Chats and settings">
@@ -58,6 +60,12 @@ export function Rail({ open, health, numPapers, sessions, sessionId, debug, them
           <span>Show retrieval details</span>
           <input type="checkbox" checked={debug} onChange={(e) => on.onDebug(e.target.checked)} />
         </label>
+        {health?.web_search && (
+          <label className="switch" title="When the papers match a question only weakly, also search the web (DuckDuckGo)">
+            <span>Web fallback (S3)</span>
+            <input type="checkbox" checked={web} onChange={(e) => on.onWeb(e.target.checked)} />
+          </label>
+        )}
         <label className="theme">
           <span>Theme</span>
           <select value={theme} onChange={(e) => on.onTheme(e.target.value as Theme)}>

@@ -39,6 +39,7 @@ export default function AnswerBot() {
   const [tab, setTab] = useState<"passage" | "library">("library");
   const [chosenStrategy, setStrategy] = useState<Strategy | null>(null); // null: the API's default
   const [debug, setDebug] = useState(false);
+  const [web, setWeb] = useState(false); // S3 web fallback, off until the user turns it on
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState("");
   const [theme, setTheme] = useState<Theme>(storedTheme);
@@ -157,10 +158,10 @@ export default function AnswerBot() {
     let finished = false;
     try {
       await askStream(
-        { question, session_id: sessionId, strategy, paper_ids: allSelected ? null : [...selected] },
+        { question, session_id: sessionId, strategy, web_fallback: web, paper_ids: allSelected ? null : [...selected] },
         (e) => {
           if (e.event === "rewrite") updateTurn(turn.id, () => ({ rewritten: e.rewritten_question }));
-          else if (e.event === "sources") updateTurn(turn.id, () => ({ sources: e.sources }));
+          else if (e.event === "sources") updateTurn(turn.id, () => ({ sources: e.sources, webNote: e.web_note }));
           else if (e.event === "token") updateTurn(turn.id, (t) => ({ status: "streaming", text: t.text + e.text }));
           else if (e.event === "done") {
             finished = true;
@@ -273,7 +274,8 @@ export default function AnswerBot() {
         <Rail
           open={railOpen} health={health} numPapers={library.length} sessions={sessions} sessionId={sessionId}
           debug={debug} theme={theme} onNewChat={() => startChat("New chat started")} onLoad={loadSession}
-          onDebug={setDebug} onTheme={changeTheme} onClear={clearHistory}
+          onDebug={setDebug} onTheme={changeTheme} onClear={clearHistory} web={web}
+          onWeb={(on) => { setWeb(on); say(on ? "Web fallback on: weak matches are also sent to DuckDuckGo" : "Web fallback off"); }}
         />
 
         <main className="convo">
@@ -317,7 +319,11 @@ export default function AnswerBot() {
               onStrategy={(s) => { setStrategy(s); say(`Next question uses ${STRATEGY_LABELS[s]} retrieval`); }}
               onScope={() => { setTab("library"); if (matchMedia("(max-width: 1180px)").matches) setReaderOpen(true); }}
             />
-            <p className="fine">Answers use only the indexed papers. Each one lists the 3 passages it was written from.</p>
+            <p className="fine">
+              {web
+                ? "Web fallback is on: when the papers match weakly, the question is also sent to DuckDuckGo, and web sources are marked WEB."
+                : "Answers use only the indexed papers. Each one lists the 3 passages it was written from."}
+            </p>
           </div>
         </main>
 
@@ -376,7 +382,8 @@ function toTurns(messages: ChatMessage[]): TurnState[] {
       sources: bot.sources, text: "", strategy: bot.strategy ?? "hybrid_rerank", scope: "the selected papers",
       response: {
         answer: bot.content, sources: bot.sources, refused: bot.refused, rewritten_question: user.rewritten_question,
-        strategy_used: bot.strategy ?? "hybrid_rerank", latency_ms: bot.latency_ms ?? 0, used_web_fallback: false,
+        strategy_used: bot.strategy ?? "hybrid_rerank", latency_ms: bot.latency_ms ?? 0,
+        used_web_fallback: bot.sources.some((s) => s.origin === "web"),
         weak_context: false, removed_citations: [],
       },
     });

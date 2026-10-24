@@ -17,6 +17,8 @@ class RetrievedChunk(BaseModel):
     dense_score: Optional[float] = None  # cosine similarity
     bm25_score: Optional[float] = None
     rerank_score: Optional[float] = None  # cross-encoder probability, 0 to 1
+    origin: Literal["paper", "web"] = "paper"  # web: a search result snippet (S3); page is 0
+    url: Optional[str] = None
 
 
 class Source(BaseModel):
@@ -54,6 +56,7 @@ class AskRequest(BaseModel):
     strategy: Literal["dense", "mmr", "hybrid", "hybrid_rerank", "multi_query"] = "hybrid_rerank"
     paper_ids: Optional[list[str]] = None
     final_k: int = Field(default=3, ge=1, le=10)
+    web_fallback: bool = False  # S3: search the web when the papers' best passage is weak
 
 
 class AskResponse(BaseModel):
@@ -63,7 +66,8 @@ class AskResponse(BaseModel):
     rewritten_question: Optional[str] = None  # S1
     strategy_used: str  # differs from the request when hybrid_rerank falls back to hybrid (reranker off)
     latency_ms: int  # retrieval plus generation
-    used_web_fallback: bool = False  # S3
+    used_web_fallback: bool = False  # S3: at least one source is a web result
+    web_note: Optional[str] = None  # S3: why the web was searched and what came of it
     # Debug fields beyond doc 05's contract, shown in the apps' debug drawer
     weak_context: bool = False  # top passage scored below the calibrated threshold
     retrieval_ms: Optional[int] = None

@@ -30,11 +30,11 @@ def short_title(title: str) -> str:
 
 LIGHT = {"desk": "#ECEEF1", "sheet": "#FFFFFF", "ink": "#1A1D24", "ink-2": "#4A505C", "ink-3": "#636A79",
          "rule": "#D8DBE1", "rule-2": "#E8EAEE", "pen": "#2F3C9E", "pen-soft": "#E7E9F7", "marker": "#FBE38A",
-         "marker-ink": "#362C00", "note-bg": "#F2F3F6", "danger": "#A12A2A", "danger-bg": "#FBEDEC",
+         "marker-ink": "#362C00", "note-bg": "#F2F3F6", "danger": "#A12A2A", "danger-bg": "#FBEDEC", "web": "#1C6E54", "web-bg": "#E3F2EC",
          "shadow": "0 1px 0 rgba(26,29,36,.04), 0 10px 30px -14px rgba(26,29,36,.28)"}
 DARK = {"desk": "#111317", "sheet": "#181B21", "ink": "#E6E8EC", "ink-2": "#B4B9C3", "ink-3": "#868D9A",
         "rule": "#2C3038", "rule-2": "#22262D", "pen": "#A9B2FF", "pen-soft": "#262B4C", "marker": "#5E4F10",
-        "marker-ink": "#FDEDB0", "note-bg": "#1F2229", "danger": "#F2A6A2", "danger-bg": "#351C1C",
+        "marker-ink": "#FDEDB0", "note-bg": "#1F2229", "danger": "#F2A6A2", "danger-bg": "#351C1C", "web": "#80D2B3", "web-bg": "#15302A",
         "shadow": "0 1px 0 rgba(0,0,0,.3), 0 12px 32px -14px rgba(0,0,0,.7)"}
 
 
@@ -114,6 +114,16 @@ CSS = """
 .src .m { display: flex; align-items: center; gap: 8px; font: 12px var(--f-mono); color: var(--ink-3);
           font-variant-numeric: tabular-nums; }
 .src.on, .src:target { border-color: var(--pen); background: var(--pen-soft); }
+.src.web { border-style: dashed; border-color: var(--web); }
+.src.web .n { color: var(--web); }
+.tag { font: 500 10.5px/1 var(--f-mono); letter-spacing: .06em; padding: 3px 5px; border-radius: 3px;
+       background: var(--web-bg); color: var(--web); }
+.cite.web { color: var(--web) !important; }
+.web-note { display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; color: var(--ink-2); padding: 10px 12px;
+            border-radius: 6px; background: var(--web-bg); margin: 4px 0; }
+.web-note b { color: var(--web); font-weight: 600; }
+.page.web .running { color: var(--web); }
+.page a { color: var(--pen); overflow-wrap: anywhere; }
 .src:target { animation: flash 1.2s ease-out; }
 @keyframes flash { 0% { box-shadow: 0 0 0 4px var(--pen-soft); } 100% { box-shadow: 0 0 0 0 transparent; } }
 [class*="st-key-srcs-dim-"] .src { opacity: .78; }
@@ -257,9 +267,24 @@ def score_label(source: Source, strategy: str) -> str:
 
 
 def source_card(source: Source, turn: int, strategy: str, active: bool) -> str:
-    return (f'<div class="src{" on" if active else ""}" id="c-{turn}-{source.rank}">'
-            f'<span class="n">{source.rank}</span><span class="t" title="{esc(source.paper_title)}">'
-            f'{esc(source.paper_title)}</span><span class="m">p. {source.page}{score_label(source, strategy)}</span></div>')
+    web = source.origin == "web"
+    where = '<span class="tag">WEB</span>' if web else f"p. {source.page}"
+    return (f'<div class="src{" web" if web else ""}{" on" if active else ""}" id="c-{turn}-{source.rank}">'
+            f'<span class="n">{source.rank}</span><span class="t" title="{esc(source.url if web else source.paper_title)}">'
+            f'{esc(source.paper_title)}</span><span class="m">{where}{score_label(source, strategy)}</span></div>')
+
+
+def citation(source: Source) -> str:
+    """How a source is cited when copied: title and page, or title and address for a web result."""
+    return f"{source.paper_title}, {source.url}" if source.origin == "web" else f"{source.paper_title}, p. {source.page}"
+
+
+def web_note(note: str | None, used: bool) -> str:
+    """S3: why the web was searched; headed by the "Includes web results" badge when it was used."""
+    if not note:
+        return ""
+    head = "<b>Includes web results.</b> " if used else ""
+    return f'<div class="web-note" role="note"><span>{head}{esc(note)}</span></div>'
 
 
 def with_citations(answer: str, sources: list[Source], turn: int) -> str:
@@ -269,8 +294,10 @@ def with_citations(answer: str, sources: list[Source], turn: int) -> str:
         if not 1 <= n <= len(sources):
             return ""
         s = sources[n - 1]
-        tip = esc(f"{short_title(s.paper_title)}, p. {s.page}: {s.snippet}")
-        return f'<a class="cite" href="#c-{turn}-{n}" title="{tip}" aria-label="Source {n}">[{n}]</a>'
+        where = "web" if s.origin == "web" else f"p. {s.page}"
+        tip = esc(f"{short_title(s.paper_title)}, {where}: {s.snippet}")
+        web = " web" if s.origin == "web" else ""
+        return f'<a class="cite{web}" href="#c-{turn}-{n}" title="{tip}" aria-label="Source {n}">[{n}]</a>'
     return CITATION.sub(chip, esc(answer))
 
 
@@ -361,6 +388,10 @@ def highlight(passage: str, answer: str, rank: int) -> str:
 
 
 def reader_page(source: Source, paper: PaperInfo | None, answer: str, refused: bool) -> str:
+    if source.origin == "web":
+        return (f'<div class="page web"><div class="running"><span>Web result</span><span>not from the library</span>'
+                f'</div><p class="body">{esc(" ".join(source.full_text.split()))}</p>'
+                f'<a href="{esc(source.url)}" target="_blank" rel="noopener noreferrer">{esc(source.url)}</a></div>')
     body = esc(" ".join(source.full_text.split())) if refused else highlight(source.full_text, answer, source.rank)
     year = paper.year if paper and paper.year else ""
     return (f'<div class="page"><div class="running"><span>{esc(short_title(source.paper_title))}</span>'
@@ -368,6 +399,9 @@ def reader_page(source: Source, paper: PaperInfo | None, answer: str, refused: b
 
 
 def reader_facts(source: Source, paper: PaperInfo | None) -> str:
+    if source.origin == "web":
+        kv = [("Title", source.paper_title), ("Source", "web search (DuckDuckGo)"), ("Score", f"{source.score:.3f}")]
+        return '<dl class="kv">' + "".join(f"<dt>{esc(a)}</dt><dd>{esc(b)}</dd>" for a, b in kv) + "</dl>"
     pages = f"{source.page} of {paper.num_pages}" if paper and paper.num_pages else str(source.page)
     kv = [("Paper", source.paper_title), ("Page", pages), ("Chunk", source.chunk_id or ""), ("Score", f"{source.score:.3f}")]
     return '<dl class="kv">' + "".join(f"<dt>{esc(a)}</dt><dd>{esc(b)}</dd>" for a, b in kv) + "</dl>"

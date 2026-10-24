@@ -35,6 +35,11 @@ WEAK_CONTEXT_NOTICE = ("\nNote: these passages scored low for this question, so 
                        "Answer only if a passage states it directly; otherwise reply with the refusal sentence "
                        "exactly.\n")
 
+# Added when web search results are among the passages (S3); the papers stay the primary source
+WEB_NOTICE = ("\nNote: passages marked Web come from a web search, not from the indexed papers. Use them only "
+              "where they answer the question directly, cite them like the others, and say when a fact comes "
+              "from the web.\n")
+
 # Few-shot passages from a fictional paper: the format is real, the content is not
 _EXAMPLE_CONTEXT = """[1] Paper: Sparse Gating for Efficient Sequence Models | Page: 4
 We train all models with the Adam optimizer (beta1 = 0.9, beta2 = 0.98) and a peak learning rate of
@@ -71,9 +76,12 @@ RAG_PROMPT = ChatPromptTemplate.from_messages(
 
 
 def format_context(chunks: list[RetrievedChunk]) -> str:
-    """Number the passages 1 to n with their paper title and page, as the prompt cites them."""
-    return "\n\n".join(f"[{rank}] Paper: {c.paper_title} | Page: {c.page}\n{c.text.strip()}"
-                       for rank, c in enumerate(chunks, start=1))
+    """Number the passages 1 to n with their paper title and page (or web title and address),
+    as the prompt cites them."""
+    return "\n\n".join(
+        (f"[{rank}] Web: {c.paper_title} | {c.url}" if c.origin == "web" else
+         f"[{rank}] Paper: {c.paper_title} | Page: {c.page}") + f"\n{c.text.strip()}"
+        for rank, c in enumerate(chunks, start=1))
 
 
 # ---- follow-up rewriting (stretch S1) ----------------------------------------------------
