@@ -10,6 +10,7 @@ weak-context threshold (M3) and the answer evaluation (M4) score explicitly.
 """
 
 import json
+import re
 import time
 from collections.abc import Callable
 from datetime import datetime, timezone
@@ -48,19 +49,22 @@ def is_hit(chunk: dict, question: dict) -> bool:
     return chunk["page"] in question["gold_pages"].get(chunk["paper_id"], [])
 
 
-def evaluate_retrieval(questions: list[dict], search: Callable[[str], list[dict]], run_id: str = "") -> pd.DataFrame:
+def evaluate_retrieval(questions: list[dict], search: Callable[[str], list], run_id: str = "",
+                       extra_ms: Callable[[], float] | None = None) -> pd.DataFrame:
     """Run ``search`` on every answerable question; one row per question (doc 05, section 8.2).
 
-    ``search`` takes the question text and returns ranked chunks (dicts with ``chunk_id``,
-    ``paper_id`` and ``page``). The reciprocal rank uses every chunk it returns.
+    ``search`` takes the question text and returns ranked chunks (``RetrievedChunk`` objects or
+    dicts with ``chunk_id``, ``paper_id`` and ``page``). The reciprocal rank uses every chunk it
+    returns. ``extra_ms``, called after each search, adds time the search did not spend in this
+    run, such as cached LLM rephrasings.
     """
     rows = []
     for q in questions:
         if not q["answerable"]:
             continue
         start = time.perf_counter()
-        results = search(q["question"])
-        latency_ms = (time.perf_counter() - start) * 1000
+        results = [c.model_dump() if hasattr(c, "model_dump") else c for c in search(q["question"])]
+        latency_ms = (time.perf_counter() - start) * 1000 + (extra_ms() if extra_ms else 0.0)
         hits = [is_hit(c, q) for c in results]
         first = next((rank for rank, hit in enumerate(hits, start=1) if hit), None)
         rows.append({
@@ -72,6 +76,26 @@ def evaluate_retrieval(questions: list[dict], search: Callable[[str], list[dict]
             "precision_at_3": sum(hits[:3]) / 3,
             "latency_ms": round(latency_ms, 1),
         })
+    return pd.DataFrame(rows)
+
+
+CHUNK_ID = re.compile(r"^(?P<paper>.+)_p(?P<page>\d{3})_c\d{3}$")
+
+
+def rescore(per_question: pd.DataFrame, questions: list[dict]) -> pd.DataFrame:
+    """Recompute hit@k, reciprocal rank and precision@3 from the stored ``retrieved_chunk_ids``
+    against the current gold labels, without re-running retrieval. A chunk id encodes its paper
+    and page, so this is exact; latency is kept as measured."""
+    by_id = {q["id"]: q for q in questions}
+    rows = []
+    for row in per_question.to_dict("records"):
+        q = by_id[row["question_id"]]
+        chunks = [{"paper_id": m["paper"], "page": int(m["page"])}
+                  for m in (CHUNK_ID.match(cid) for cid in row["retrieved_chunk_ids"])]
+        hits = [is_hit(c, q) for c in chunks]
+        first = next((rank for rank, hit in enumerate(hits, start=1) if hit), None)
+        rows.append({**row, "hit_at_1": any(hits[:1]), "hit_at_3": any(hits[:3]), "hit_at_5": any(hits[:5]),
+                     "reciprocal_rank": 1 / first if first else 0.0, "precision_at_3": sum(hits[:3]) / 3})
     return pd.DataFrame(rows)
 
 

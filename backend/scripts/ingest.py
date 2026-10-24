@@ -5,8 +5,9 @@ Stages, run in this order by default:
          and artifacts/pages.parquet, and print a quality report.
   chunk  Split the cleaned pages with the chunking set in rpab/config.py and write
          artifacts/chunks.parquet, the canonical chunk table.
-  index  Embed the chunks with both embedding models, store each in its own Chroma
-         collection under artifacts/chroma, and run the integrity checks.
+  index  Build the BM25 index (artifacts/bm25.joblib), embed the chunks with both embedding
+         models, store each in its own Chroma collection under artifacts/chroma, and run
+         the integrity checks.
 
 Run from the backend folder, optionally naming the stages to run:
 
@@ -72,7 +73,11 @@ def stage_index(models: tuple[str, ...] = ("open", "commercial")) -> None:
     from rpab.embeddings import load_embedder
     from rpab.vectorstore import build_collection, get_client
 
+    from rpab.retrievers import BM25Index
+
     chunks = pd.read_parquet(CONFIG.paths.chunks)
+    BM25Index.load_or_build(CONFIG.paths.bm25, chunks)  # rebuilt only if the chunks or tokenizer changed
+    print(f"BM25 index ready: {CONFIG.paths.bm25.name} ({len(chunks)} chunks)")
     client = get_client(CONFIG.paths.chroma_dir)
     for kind in models:
         if kind == "commercial" and not CONFIG.google_api_key:

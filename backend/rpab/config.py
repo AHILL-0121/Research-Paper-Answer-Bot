@@ -56,6 +56,7 @@ class Paths:
     chunk_grid_dir: Path = BACKEND_DIR / "artifacts" / "chunk_grid"  # one parquet per chunking experiment
     embeddings_cache: Path = BACKEND_DIR / "artifacts" / "embeddings_cache"
     bm25: Path = BACKEND_DIR / "artifacts" / "bm25.joblib"
+    multi_query_cache: Path = BACKEND_DIR / "artifacts" / "multi_query_cache.json"  # LLM rephrasings per question
     experiments: Path = BACKEND_DIR / "artifacts" / "experiments.csv"
     chat_db: Path = BACKEND_DIR / "artifacts" / "chat.db"
 
@@ -88,10 +89,11 @@ class Config:
         "fallback": "nomic-embed-text",  # via Ollama, used if the Gemini free tier fails
     })
     embed_batch_size: int = 16
-    # Chosen in notebook section 4: Gemini for retrieval, bge-m3 as the offline fallback
-    embedding_choice: str = field(default_factory=lambda: _env_choice("RPAB_EMBEDDING", "commercial",
+    # Chosen in notebook section 6, after the gold-page audit: bge-m3 (local). Gemini ties it once results
+    # are reranked, so the local model wins on latency, privacy and having no API dependency.
+    # Gemini stays indexed and selectable with RPAB_EMBEDDING=commercial.
+    embedding_choice: str = field(default_factory=lambda: _env_choice("RPAB_EMBEDDING", "open",
                                                                        ("commercial", "open")))
-    embedding_fallback: str = "open"
     device: str = field(default_factory=lambda: _env_choice("RPAB_DEVICE", "auto", ("auto", "cuda", "cpu")))
     profile: str = field(default_factory=lambda: _env_choice("RPAB_PROFILE", "gpu", ("gpu", "cpu")))
 
@@ -103,8 +105,20 @@ class Config:
     rrf_k: int = 60  # reciprocal rank fusion constant for hybrid search
     reranker_model: str = "BAAI/bge-reranker-v2-m3"
     use_reranker: bool = field(default_factory=lambda: _env_choice("RPAB_RERANKER", "on", ("on", "off")) == "on")
-    confidence_threshold: float = 0.30  # placeholder until calibrated on dev questions
+    retrieval_strategy: str = "hybrid_rerank"  # chosen in section 6; plain hybrid when the reranker is off
+    # RRF weight of the dense list (BM25 gets the rest). 0.3/0.5/0.7 differ by about one dev question,
+    # so the neutral 0.5 is kept rather than a value fitted to 12 questions
+    hybrid_dense_weight: float = 0.5
+    # Weak-context thresholds on the top passage's score, keyed by score kind: "rerank" (cross-encoder
+    # probability) or an embedding slug (cosine, used when there is no reranker). Calibrated in section 6
+    # Midpoints between the highest out-of-scope and lowest answerable dev scores (3 + 12 questions)
+    confidence_thresholds: dict = field(default_factory=lambda: {
+        "rerank": 0.7205,  # perfect separation on dev: out-of-scope <= 0.589, answerable >= 0.852
+        "bge_m3": 0.6091,  # cosine, no reranker: keeps 10 of 12 answerable, flags 3 of 3 out-of-scope
+        "gemini_embedding_001": 0.7525,  # cosine, no reranker: keeps 11 of 12, flags 3 of 3
+    })
     multi_query_n: int = 3
+    rewrite_num_ctx: int = 2048  # the rewrite prompt is short; a small context saves GPU memory
 
     # Generation (local, via Ollama)
     ollama_base_url: str = field(default_factory=lambda: os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"))

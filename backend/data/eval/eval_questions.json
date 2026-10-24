@@ -41,7 +41,10 @@
     ],
     "gold_pages": {
       "bert": [
-        4
+        4,
+        12,
+        13,
+        16
       ]
     },
     "reference_answer": "15% of WordPiece token positions are chosen at random. A chosen token is replaced by [MASK] 80% of the time, by a random token 10% of the time, and left unchanged 10% of the time.",
@@ -58,7 +61,8 @@
     "gold_pages": {
       "dpr": [
         3,
-        4
+        4,
+        6
       ]
     },
     "reference_answer": "With B questions in a mini-batch, each question's gold passage serves as a negative for the other questions; the B x B similarity matrix QP^T is computed once, giving B-1 negatives per question cheaply.",
@@ -108,7 +112,9 @@
     "gold_pages": {
       "rag": [
         2,
-        3
+        3,
+        4,
+        5
       ]
     },
     "reference_answer": "A Dense Passage Retriever (DPR) over a Wikipedia vector index as non-parametric memory, and a pre-trained BART seq2seq model as the generator.",
@@ -156,7 +162,9 @@
     ],
     "gold_pages": {
       "lora": [
-        1
+        1,
+        5,
+        9
       ]
     },
     "reference_answer": "Trainable parameters drop by 10,000 times and the GPU memory requirement by 3 times.",
@@ -189,7 +197,10 @@
     ],
     "gold_pages": {
       "cot": [
-        4
+        4,
+        5,
+        21,
+        22
       ]
     },
     "reference_answer": "It is an emergent ability of scale: it does not help small models and only yields gains with models of about 100B parameters.",
@@ -206,7 +217,10 @@
     "gold_pages": {
       "instructgpt": [
         2,
-        3
+        3,
+        7,
+        8,
+        9
       ]
     },
     "reference_answer": "(1) Supervised fine-tuning on labeler demonstrations, (2) training a reward model on labeler rankings of outputs, (3) reinforcement learning with PPO against that reward model.",
@@ -238,6 +252,8 @@
     ],
     "gold_pages": {
       "qlora": [
+        1,
+        2,
         4,
         5
       ]
@@ -255,6 +271,7 @@
     ],
     "gold_pages": {
       "qlora": [
+        1,
         2,
         5
       ]
@@ -272,6 +289,7 @@
     ],
     "gold_pages": {
       "llama2": [
+        8,
         16,
         17
       ]
@@ -289,8 +307,11 @@
     ],
     "gold_pages": {
       "llama2": [
+        4,
         5,
-        6
+        6,
+        47,
+        77
       ]
     },
     "reference_answer": "2 trillion tokens, with a 4k (4096-token) context length, double that of Llama 1.",
@@ -307,10 +328,15 @@
     ],
     "gold_pages": {
       "lora": [
+        2,
         4
       ],
       "qlora": [
-        4
+        1,
+        2,
+        3,
+        4,
+        5
       ]
     },
     "reference_answer": "LoRA freezes the pretrained weights W0 and trains only the low-rank matrices B and A added alongside them; QLoRA additionally quantizes the frozen base model to 4-bit NF4 (with double quantization), dequantizing to BFloat16 on the fly for computation while gradients flow through it into the LoRA adapters.",
@@ -328,7 +354,9 @@
     "gold_pages": {
       "rag": [
         2,
-        3
+        3,
+        4,
+        5
       ],
       "dpr": [
         3
@@ -449,7 +477,10 @@
     ],
     "gold_pages": {
       "qlora": [
-        2
+        2,
+        9,
+        10,
+        26
       ]
     },
     "reference_answer": "The 7B Guanaco model needs just 5 GB of memory and outperforms a 26 GB Alpaca model by more than 20 percentage points on the Vicuna benchmark.",

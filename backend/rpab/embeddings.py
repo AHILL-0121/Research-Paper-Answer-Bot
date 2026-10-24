@@ -38,6 +38,12 @@ class CachedEmbedder(Embeddings):
             self._cache = joblib.load(self.cache_path)
         self.seconds = 0.0  # time spent embedding texts that were not cached
         self.embedded = 0  # number of texts actually sent to the model
+        # Optional in-memory query cache for experiments: each query is embedded once and every later
+        # call is charged the time the real embedding took (query_seconds), so latency stays honest
+        self.cache_queries = False
+        self._queries: dict[str, tuple[list[float], float]] = {}
+        self.query_seconds = 0.0
+        self._last_request_s: float | None = None  # set by API embedders: the successful request only
 
     def _embed(self, texts: list[str], is_query: bool) -> np.ndarray:
         raise NotImplementedError
@@ -75,7 +81,19 @@ class CachedEmbedder(Embeddings):
         return self.embed_array(texts).tolist()
 
     def embed_query(self, text: str) -> list[float]:
-        return self._embed([text], is_query=True)[0].tolist()
+        if self.cache_queries and text in self._queries:
+            vector, seconds = self._queries[text]
+            self.query_seconds += seconds
+            return vector
+        self._last_request_s = None
+        start = time.perf_counter()
+        vector = self._embed([text], is_query=True)[0].tolist()
+        # Pacing waits and failed attempts are not part of a single user's query time
+        seconds = self._last_request_s if self._last_request_s is not None else time.perf_counter() - start
+        if self.cache_queries:
+            self._queries[text] = (vector, seconds)
+        self.query_seconds += seconds
+        return vector
 
 
 class BgeM3Embedder(CachedEmbedder):
@@ -106,11 +124,16 @@ class BgeM3Embedder(CachedEmbedder):
                                  convert_to_numpy=True, show_progress_bar=len(texts) > 200)
 
 
+class GeminiQuotaExhausted(RuntimeError):
+    """The free tier's daily request limit is reached; retrying before the reset is pointless."""
+
+
 class GeminiEmbedder(CachedEmbedder):
     """gemini-embedding-001 on the free tier.
 
     Requests carry up to ``batch_size`` texts. Before each request the embedder waits so the
-    estimated tokens sent in the last minute stay under ``tokens_per_minute``; a 429 or 5xx
+    estimated tokens and the requests sent in the last minute stay under ``tokens_per_minute``
+    and ``requests_per_minute``; a 429 or 5xx
     response is retried with exponential backoff, honouring the server's suggested delay.
     The cache is saved after every batch, so a run stopped by the daily quota resumes where it ended.
     """
@@ -121,7 +144,7 @@ class GeminiEmbedder(CachedEmbedder):
     price_per_m_tokens = 0.15  # paid-tier list price in USD; the free tier costs nothing
 
     def __init__(self, api_key: str, cache_dir: Path | None = None, batch_size: int = 50,
-                 tokens_per_minute: int = 25_000, max_retries: int = 8):
+                 tokens_per_minute: int = 25_000, requests_per_minute: int = 90, max_retries: int = 8):
         super().__init__(cache_dir)
         from google import genai
 
@@ -130,9 +153,11 @@ class GeminiEmbedder(CachedEmbedder):
         self.client = genai.Client(api_key=api_key)
         self.batch_size = batch_size
         self.tokens_per_minute = tokens_per_minute
+        self.requests_per_minute = requests_per_minute
         self.max_retries = max_retries
         self._sent: list[tuple[float, int]] = []  # (time, estimated tokens) of recent requests
         self.tokens_sent = 0
+        self.retries = 0  # rate-limit or server-error retries; a retry inflates measured latency
 
     @staticmethod
     def estimate_tokens(text: str) -> int:
@@ -142,7 +167,8 @@ class GeminiEmbedder(CachedEmbedder):
         while True:
             now = time.monotonic()
             self._sent = [(t, n) for t, n in self._sent if now - t < 60]
-            if sum(n for _, n in self._sent) + tokens <= self.tokens_per_minute or not self._sent:
+            under_tokens = sum(n for _, n in self._sent) + tokens <= self.tokens_per_minute
+            if (under_tokens and len(self._sent) < self.requests_per_minute) or not self._sent:
                 return
             time.sleep(60 - (now - self._sent[0][0]) + 0.5)
 
@@ -153,16 +179,24 @@ class GeminiEmbedder(CachedEmbedder):
         for attempt in range(self.max_retries):
             self._pace(tokens)
             try:
+                start = time.perf_counter()
                 result = self.client.models.embed_content(
                     model=self.model_name, contents=texts, config=types.EmbedContentConfig(task_type=task_type))
+                self._last_request_s = time.perf_counter() - start
                 self._sent.append((time.monotonic(), tokens))
                 self.tokens_sent += tokens
                 return np.array([e.values for e in result.embeddings], dtype=np.float32)
             except (errors.ClientError, errors.ServerError) as exc:
+                if getattr(exc, "code", None) == 429 and "per day" in str(exc).lower():
+                    # The daily free-tier limit (1,000 requests) does not recover with backoff
+                    raise GeminiQuotaExhausted(
+                        "Gemini's daily free-tier embedding quota is used up; it resets at midnight Pacific "
+                        "time. Use the local model meanwhile (RPAB_EMBEDDING=open).") from exc
                 if getattr(exc, "code", None) not in (429, 500, 503) or attempt == self.max_retries - 1:
                     raise
                 hint = re.search(r"retry in (\d+(?:\.\d+)?)s|'retryDelay': '(\d+)s'", str(exc))
                 delay = float(next(g for g in hint.groups() if g)) if hint else 0.0
+                self.retries += 1
                 time.sleep(max(delay, 2 ** attempt * 5))
         raise RuntimeError("unreachable")
 
